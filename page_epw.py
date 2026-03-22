@@ -2,7 +2,7 @@
 # page_epw.py
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from config import FREQ_MAP, FUNC_MAP, VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS
+from config import FREQ_MAP, FUNC_MAP, EPW_VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS
 
 
 def create_page_epw():
@@ -37,15 +37,15 @@ def create_page_epw():
 
             # Choix de la Période
             html.Div([
-                html.Label("Période (MM-JJ → MM-JJ)", style={'fontWeight': 'bold', 'marginTop': '12px'}),
+                html.Label("Période (DD.MM → DD.MM)", style={'fontWeight': 'bold', 'marginTop': '12px'}),
                 html.Div([
                     dcc.Input(
-                        id='common-start', type='text', value='01-01',
-                        placeholder='MM-JJ', style={'width': '45%', 'marginRight': '10px'}
+                        id='common-start', type='text', value='01.01',
+                        placeholder='DD.MM', style={'width': '45%', 'marginRight': '10px'}
                     ),
                     dcc.Input(
-                        id='common-end', type='text', value='12-31',
-                        placeholder='MM-JJ', style={'width': '45%'}
+                        id='common-end', type='text', value='31.12',
+                        placeholder='DD.MM', style={'width': '45%'}
                     ),
                 ], style={'marginBottom': '10px'}),
             ]),
@@ -72,10 +72,10 @@ def create_page_epw():
                             dcc.Dropdown(
                                 id='epw-var',
                                 options=[
-                                    {'label': label, 'value': VARIABLE_MAP[label]}
-                                    for label in VARIABLE_MAP.keys()
+                                    {'label': label, 'value': EPW_VARIABLE_MAP[label]}
+                                    for label in EPW_VARIABLE_MAP.keys()
                                 ],
-                                value=list(VARIABLE_MAP.values())[0],
+                                value=list(EPW_VARIABLE_MAP.values())[0],
                                 clearable=False
                             ),
 
@@ -93,6 +93,19 @@ def create_page_epw():
                                 options=[{'label': label, 'value': label} for label in FUNC_MAP.keys()],
                                 value='Moyenne',
                                 clearable=False
+                            ),
+
+                            html.Label("Axe X", style={'fontWeight': 'bold', 'marginTop': '10px'}),
+                            dcc.RadioItems(
+                                id='x-mode',
+                                options=[
+                                    {'label': 'Date', 'value': 'date'},
+                                    {'label': 'Tri décroissant', 'value': 'desc'},
+                                    {'label': 'Tri croissant', 'value': 'asc'},
+                                ],
+                                value='date',
+                                inputStyle={"margin-right": "8px"},
+                                labelStyle={'display': 'inline-block', 'margin-right': '16px'}
                             ),
 
                             html.Label("Axe Y", style={'fontWeight': 'bold', 'marginTop': '10px'}),
@@ -178,10 +191,10 @@ def create_page_epw():
                             dcc.Dropdown(
                                 id='heatmap-var',
                                 options=[
-                                    {'label': label, 'value': VARIABLE_MAP[label]}
-                                    for label in VARIABLE_MAP.keys()
+                                    {'label': label, 'value': EPW_VARIABLE_MAP[label]}
+                                    for label in EPW_VARIABLE_MAP.keys()
                                 ],
-                                value=list(VARIABLE_MAP.values())[0],
+                                value=list(EPW_VARIABLE_MAP.values())[0],
                                 clearable=False
                             ),
 

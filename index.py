@@ -1,22 +1,22 @@
 # index.py
-from dash import html, dcc
+from dash import html, dcc, callback_context
 from dash.exceptions import PreventUpdate
 from dash.dependencies import Input, Output, State
 from app import app
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
-import numpy as np
+import numpy as np #
 
 from navbar import create_navbar
 from home import create_page_home
 from page_epw import create_page_epw
 from epw_io import load_weather_data_from_folder
 from processing import compute_aggregated_df, filter_by_period
-from config import YLABEL_MAP, REFERENCE_YEAR, FREQ_MAP, VARIABLE_MAP, FUNC_MAP, COLOR_MAP_BY_VAR, MANUAL_COLOR_MAP_OPTIONS
+from config import YLABEL_MAP, REFERENCE_YEAR, FREQ_MAP, EPW_VARIABLE_MAP, FUNC_MAP, COLOR_MAP_BY_VAR, MANUAL_COLOR_MAP_OPTIONS
 from windrose_dash import build_windrose_figure
 
-PAD_RATIO = 0.05  # ajuste à 0.02..0.05 pour rapprocher visuellement 'Fixe' de 'Auto'
+PAD_RATIO = 0.05  # ajuste à 0.02..0.05 pour rapprocher visuellement les bornes de l'axe y en mode 'Fixe' et 'Auto'
 
 # >>> Chemin dossier à adapter
 FOLDER = r"C:\Users\n.rey\PycharmProjects\EPWanalytics\data"
@@ -32,6 +32,7 @@ app.layout = html.Div([
     nav,
     dcc.Store(id='y-fixed-store', data={"active": False, "var": None, "range": None}),
     dcc.Store(id='epw-store', data=None),   # on y mettra le DF sérialisé si besoin
+    dcc.Store(id='axes-store', data={'x': None, 'y': None}),
     html.Div(id='page-content')
 ])
 
@@ -52,11 +53,11 @@ def display_page(pathname):
 
 # === Helper générique ===
 def _mmdd_to_ref_dates(start_label: str, end_label: str, year: int = REFERENCE_YEAR):
-    """'MM-JJ' -> (Timestamp start, Timestamp end) dans l'année de référence.
-       Si parsing échoue, défaut 01-01 -> 12-31. Si end < start, on inverse."""
+    """'DD.MM' -> (Timestamp start, Timestamp end) dans l'année de référence.
+       Si parsing échoue, défaut 01.01 -> 31.12. Si end < start, on inverse."""
     def _parse(label, default):
         try:
-            m, d = map(int, (label or '').split('-'))
+            d, m = map(int, (label or '').split('.'))
             return pd.Timestamp(year=year, month=m, day=d)
         except Exception:
             return default
@@ -68,10 +69,10 @@ def _mmdd_to_ref_dates(start_label: str, end_label: str, year: int = REFERENCE_Y
 
 
 def _parse_mmdd(label: str, default=(1, 1)):
-    """'MM-DD' -> (month, day) avec fallback."""
+    """'DD.MM' -> (day, month) avec fallback."""
     try:
-        m, d = map(int, (label or '').split('-'))
-        return m, d
+        d, m = map(int, (label or '').split('.'))
+        return d, m
     except Exception:
         return default
 
@@ -168,6 +169,84 @@ def _extract_range_from_relayout(relayout):
 
 # === Calls back ===
 
+#Gestion des limites d'axe et du zoom
+def _extract_axis_ranges_or_auto(relayout):
+    """
+    Analyse relayoutData pour extraire:
+      - xrange (liste [x0, x1]) OU 'auto' si autoscale demandé, sinon None
+      - yrange (liste [y0, y1]) OU 'auto' si autoscale demandé, sinon None
+    """
+    xr = yr = None
+
+    if not relayout:
+        return None, None
+
+    # --- X ---
+    # cas autoscale/double-clic
+    if relayout.get('xaxis.autorange') is True:
+        xr = 'auto'
+    # cas range explicite
+    elif 'xaxis.range' in relayout and isinstance(relayout['xaxis.range'], (list, tuple)) and len(relayout['xaxis.range']) == 2:
+        xr = [pd.to_datetime(relayout['xaxis.range'][0]), pd.to_datetime(relayout['xaxis.range'][1])]
+    else:
+        x0 = relayout.get('xaxis.range[0]')
+        x1 = relayout.get('xaxis.range[1]')
+        if x0 is not None and x1 is not None:
+            xr = [pd.to_datetime(x0), pd.to_datetime(x1)]
+
+    # --- Y ---
+    if relayout.get('yaxis.autorange') is True:
+        yr = 'auto'
+    elif 'yaxis.range' in relayout and isinstance(relayout['yaxis.range'], (list, tuple)) and len(relayout['yaxis.range']) == 2:
+        y0, y1 = relayout['yaxis.range']
+        yr = [float(y0), float(y1)]
+    else:
+        y0 = relayout.get('yaxis.range[0]')
+        y1 = relayout.get('yaxis.range[1]')
+        if y0 is not None and y1 is not None:
+            yr = [float(y0), float(y1)]
+
+    return xr, yr
+
+@app.callback(
+    Output('axes-store', 'data'),
+    [
+        Input('epw-graph', 'relayoutData'),
+        # Changement de contexte -> on repart à l'état par défaut
+        Input('common-start', 'value'),
+        Input('common-end', 'value'),
+        Input('common-sources', 'value'),
+        Input('epw-var', 'value'),
+        Input('epw-period', 'value'),
+        Input('epw-func', 'value'),
+    ],
+    State('axes-store', 'data')
+)
+def persist_axes(relayout, start_label, end_label, selected_sources,
+                 var_col, period_label, func_label, store):
+    store = (store or {'x': None, 'y': None}).copy()
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trig = ctx.triggered[0]['prop_id']
+
+    # 1) Un évènement de zoom/pan/autoscale/double-clic vient du graphe
+    if trig.startswith('epw-graph.relayoutData'):
+        xr, yr = _extract_axis_ranges_or_auto(relayout)
+        # on ne remplace que ce qui est spécifié
+        if xr is not None:
+            store['x'] = xr
+        if yr is not None:
+            store['y'] = yr
+        return store
+
+    # 2) Changement de période/sources/paramètres -> remettre l'état par défaut
+    #    - X: None -> le callback de dessin appliquera la période
+    #    - Y: None -> il appliquera Auto/Manuel selon les contrôles
+    return {'x': None, 'y': None}
+
+
 
 @app.callback(
     Output('epw-graph', 'figure'),
@@ -179,15 +258,17 @@ def _extract_range_from_relayout(relayout):
         Input('epw-var', 'value'),
         Input('epw-period', 'value'),
         Input('epw-func', 'value'),
+        Input('x-mode', 'value'),
         Input('y-mode', 'value'),
-        Input('epw-graph', 'relayoutData'),
         Input('ymin', 'value'),
         Input('ymax', 'value'),
     ],
+    State('axes-store', 'data')
 )
-def update_epw_graph(active_tab, selected_sources, start_label, end_label,
-                     var_col, period_label, func_label,
-                     y_mode, relayout, ymin, ymax):
+
+def update_epw_graph(active_tab, selected_sources, start_label, end_label,var_col, period_label, func_label, x_mode,
+                     y_mode, ymin, ymax,axes_store):
+
     if active_tab != 'tab-plot':
         raise PreventUpdate
 
@@ -199,7 +280,7 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,
     if df_sel.empty:
         return go.Figure().update_layout(template='plotly_white', title="Pas de données")
 
-    # 1) Données agrégées
+    # 1) Données avec agrégation temporelle + fonction appliquée
     plot_df = compute_aggregated_df(
         df_sel,
         period_label=period_label,
@@ -207,22 +288,55 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,
         var_col=var_col
     )
 
-    # 2) Figure
     fig = go.Figure()
-    # mode markers allégé si très dense
-    mode = 'lines' if period_label in ('Heure', 'h', 'Hour') else 'lines+markers'
-    for src, df_src in plot_df.groupby("source"):
-        fig.add_trace(go.Scatter(
-            x=df_src["datetime"], y=df_src[var_col],
-            name=src, mode=mode,
-            hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}"
-        ))
+    print(f"x_mode : {x_mode}")
+    # 2) Construire les traces selon x_mode
+    if x_mode == 'date':
+        print('mode date')
+        # Axe x : Mode temporel
+        mode_line = 'lines' if period_label in ('Heure', 'h', 'Hour') else 'lines+markers'
+        for src, df_src in plot_df.groupby("source"):
+            fig.add_trace(go.Scatter(
+                x=df_src["datetime"],
+                y=df_src[var_col],
+                name=src,
+                mode=mode_line,
+                hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}"
+            ))
+        x_title = f"Calendrier {REFERENCE_YEAR} (1er janv. → 31 déc.)"
+        subtitle = func_label
+    else:
+        print('mode tri')
+        # Axe x : Mode tri — faire le tri APRES agrégation
+        isAscending = (x_mode == 'asc')
+        for src, df_src in plot_df.groupby("source"):
+            # Nettoyage NA, tri stable pour reproductibilité
+            tmp = df_src[['datetime', var_col]].dropna(subset=[var_col]).copy()
+            tmp = tmp.sort_values(by=var_col, ascending=isAscending, kind='mergesort')  # stable
+            tmp['rank'] = range(1, len(tmp) + 1)  # 1..n pour cette source
+
+            fig.add_trace(go.Scatter(
+                x=tmp['rank'],
+                y=tmp[var_col],
+                name=src,
+                mode='markers',
+                hovertemplate="Rang %{x}<br>%{y:.2f}<br>%{customdata|%d-%m %H:%M}",
+                customdata=tmp['datetime']  # afficher la date source dans le hover
+            ))
+
+        x_title = "Index (1..n)"
+        subtitle = "Tri croissant" if isAscending else "Tri décroissant"
 
     # 3) Layout de base
+    if func_label == "Somme cumulée" :
+        title = f"{func_label} (cumul depuis 01.01)"
+    else:
+        title = f"{var_col} : {func_label} par {period_label}",
+
     fig.update_layout(
         template='plotly_white',
-        title=f"{var_col} : {func_label} par {period_label}",
-        xaxis_title=f"Calendrier {REFERENCE_YEAR} (1er janv. → 31 déc.)",
+        title=f"{var_col} : {func_label} par {period_label}" + ("" if x_mode == 'date' else f" — {subtitle}") if func_label != "Somme cumulée" else f"{var_col} : {func_label} par {period_label}",
+        xaxis_title=x_title,
         yaxis_title=YLABEL_MAP.get(var_col, var_col),
         hovermode='x unified',
         legend=dict(
@@ -232,7 +346,7 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,
         margin=dict(l=60, r=20, t=60, b=60),
     )
 
-    # 4) Zoom X = période commune
+    '''# 4) Zoom X = période commune
     x0, x1 = _mmdd_to_ref_dates(start_label, end_label, REFERENCE_YEAR)
     fig.update_xaxes(range=[x0, x1])
 
@@ -282,7 +396,58 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,
         manual_range = pad_range(dmin, dmax) if dmin == dmax else [dmin, dmax]
 
     fig.update_yaxes(range=pad_range(*manual_range))
+    return fig'''
+
+    # 4) Gestion de l'axe X (période / store / tri)
+    axes_store = axes_store or {'x': None, 'y': None}
+    if x_mode == 'date':
+        # Respecter le store (zoom/auto) ou la période par défaut
+        if axes_store.get('x') == 'auto':
+            fig.update_xaxes(autorange=True)
+        elif isinstance(axes_store.get('x'), (list, tuple)) and len(axes_store['x']) == 2:
+            fig.update_xaxes(range=axes_store['x'])
+        else:
+            x0, x1 = _mmdd_to_ref_dates(start_label, end_label, REFERENCE_YEAR)
+            fig.update_xaxes(range=[x0, x1])
+    else:
+        # En mode tri, X = 1..n => laisser autorange et ticks linéaires
+        fig.update_xaxes(autorange=True, tickmode='auto', title_standoff=8)
+
+
+
+    # 5) Axe Y : respecter un zoom manuel mémorisé, sinon logique Auto/Manuel
+    if axes_store.get('y') == 'auto':
+        fig.update_yaxes(autorange=True)
+        return fig
+    elif isinstance(axes_store.get('y'), (list, tuple)) and len(axes_store['y']) == 2:
+        fig.update_yaxes(range=axes_store['y'])
+        return fig
+
+    # Pas de zoom manuel Y -> logique Auto/Manuel
+    if y_mode == 'Auto':
+        fig.update_yaxes(autorange=True)
+        return fig
+
+    # y_mode == 'Manuel'
+    manual_range = None
+    try:
+        if ymin is not None and ymax is not None:
+            y0f, y1f = sorted([float(ymin), float(ymax)])
+            manual_range = [y0f, y1f]
+    except Exception:
+        manual_range = None
+
+    if manual_range is None:
+        if plot_df.empty:
+            fig.update_yaxes(autorange=True)
+            return fig
+        dmin, dmax = float(plot_df[var_col].min()), float(plot_df[var_col].max())
+        manual_range = [dmin, dmax] if dmin != dmax else pad_range(dmin, dmax)
+
+    fig.update_yaxes(range=pad_range(*manual_range))
     return fig
+
+
 
 
 @app.callback(
@@ -498,8 +663,8 @@ def update_heatmap(active_tab, selected_sources, start_label, end_label,
     sources = list(selected_sources)[:4]
 
     # Parse période MM-JJ -> ints
-    sm, sd = _parse_mmdd(start_label, (1, 1))
-    em, ed = _parse_mmdd(end_label, (12, 31))
+    sd, sm = _parse_mmdd(start_label, (1, 1))
+    ed, em = _parse_mmdd(end_label, (12, 31))
 
     # Construire les matrices pour chaque source
     mats = []

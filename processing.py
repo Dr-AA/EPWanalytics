@@ -7,14 +7,30 @@ def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: s
     # Aggrège les données selon la période period_label et la fonction func_label, pour la variable var_col
     freq = FREQ_MAP[period_label]
     func = FUNC_MAP[func_label]
-    aggregated_df = (
+
+    if var_col not in all_df.columns:
+        # Sécurité : renvoyer un DF vide si la variable n'existe pas
+        return pd.DataFrame(columns=["source", "datetime", var_col])
+
+    # 1) Agrégation par période
+    base = (
         all_df.set_index("datetime")
-              .groupby("source")[var_col]
-              .resample(freq)
-              .agg(func)
-              .reset_index()
+        .groupby("source")[var_col]
+        .resample(freq)
     )
-    return aggregated_df
+
+    if func == "cumsum":
+        # 1a) On somme par période (additive), quelle que soit la variable, puis on cumulera par source.
+        aggregated = base.sum().reset_index()
+        aggregated = aggregated.sort_values(["source", "datetime"])
+        # 2) Cumul par source
+        aggregated[var_col] = aggregated.groupby("source")[var_col].cumsum()
+        return aggregated
+    else:
+        # Cas standard: func est un string ('mean','min',...) ou une fonction lambda (pour les quantiles)
+        aggregated = base.agg(func).reset_index()
+        return aggregated
+
 
 
 

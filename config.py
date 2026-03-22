@@ -8,26 +8,38 @@ FREQ_MAP = {
     "Jour": "d",
     "Semaine": "W-MON",
     "Mois": "ME",
-    "Année" : "y"
+    "Année" : "YE"
 }
 
 FUNC_MAP = {
     "Moyenne": "mean",
     "Min": "min",
     "Max": "max",
+    "Médiane": "median",
+    "Quartile 25%" : lambda s: s.quantile(0.25),
+    "Quartile 75%" : lambda s: s.quantile(0.75),
+    "Ecart-type" : "std",
+    "Somme": "sum",
+    "Somme cumulée": "cumsum",
+    # 'Somme cumulée' est un mot-clé traité par compute_aggregated_df
+    # qui fera une agrégation par 'sum' puis un cumsum (par source).
+
 }
 
-VARIABLE_MAP = {
+EPW_VARIABLE_MAP = {
     "Dry bulb (°C)": "DryBulb",
     "Dew point (°C)": "DewPoint",
     "Relative humidity (%)": "RelativeHumidity",
     "Wind speed (m/s)": "WindSpeed",
     "Wind direction (°)": "WindDirection",
+    "Total sky cover (tenths)": "TotalSkyCover",
     "Global horizontal radiation (Wh/m²)": "GlobalHorizontalRadiation",
     "Direct normal radiation (Wh/m²)": "DirectNormalRadiation",
     "Diffuse horizontal radiation (Wh/m²)": "DiffuseHorizontalRadiation",
     "Station pressure (Pa)": "StationPressure",
     "Precipitable water (mm)": "PrecipitableWater",
+    "Snow Depth (cm)": "SnowDepth",
+    "Albedo" : "Albedo",
     "Liquid precipitation depth (mm)": "LiquidPrecipitationDepth",
     "Liquid precipitation quantity (mm/h)": "LiquidPrecipitationQuantity",
 }
@@ -38,15 +50,17 @@ YLABEL_MAP = {
     "RelativeHumidity": "Humidité relative (%)",
     "WindSpeed": "Vitesse du vent (m/s)",
     "WindDirection": "Direction du vent (°)",
+    "TotalSkyCover": "Couverture nuageuse (dixièmes)",
     "GlobalHorizontalRadiation": "Rayonnement global horizontal (Wh/m²)",
     "DirectNormalRadiation": "Rayonnement direct normal (Wh/m²)",
     "DiffuseHorizontalRadiation": "Rayonnement diffus horizontal (Wh/m²)",
     "StationPressure": "Pression atmosphérique (Pa)",
     "PrecipitableWater": "Eau précipitable (mm)",
+    "SnowDepth": "Hauteur de neige (cm)",
+    "Albedo":"Albedo",
     "LiquidPrecipitationDepth": "Hauteur de précipitations (mm)",
     "LiquidPrecipitationQuantity": "Quantité de précipitations (mm/h)",
 }
-
 
 # --- Color maps pour la Heatmap ---
 # Mapping par variable (colonne interne) vers un colorscale Plotly

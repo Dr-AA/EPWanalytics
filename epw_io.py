@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from config import REFERENCE_YEAR, LEAP_DAY_POLICY
 
-COLUMN_RENAME = {
+EPW_COLUMN_RENAME = {
     0:"Year", 1:"Month", 2:"Day", 3:"Hour", 4:"Minute",
     6:"DryBulb",
     7:"DewPoint",
@@ -26,25 +26,85 @@ COLUMN_RENAME = {
     23:"OpaqueSkyCover",
     24:"Visibility",
     25:"CeilingHeight",
-    27:"PrecipitableWater",
-    28:"AerosolOpticalDepth",
-    29:"SnowDepth",
-    30:"DaysSinceLastSnowfall",
-    31:"Albedo",
-    32:"LiquidPrecipitationDepth",
-    33:"LiquidPrecipitationQuantity",
+    28:"PrecipitableWater",
+    29:"AerosolOpticalDepth",
+    30:"SnowDepth",
+    31:"DaysSinceLastSnowfall",
+    32:"Albedo",
+    33:"LiquidPrecipitationDepth",
+    34:"LiquidPrecipitationQuantity",
+}
+
+EPW_NAN_VALUE_MAP = {
+    "DryBulb" : 99.9,
+    "DewPoint" : 99.9,
+    "RelativeHumidity" : 999,
+    "StationPressure" : 999999,
+    "ExtraterrestrialHorizontalRadiation" : 9999,
+    "ExtraterrestrialDirectNormalRadiation" : 9999,
+    "HorizontalInfraredRadiationIntensity" : 9999,
+    "GlobalHorizontalRadiation" : 9999,
+    "DirectNormalRadiation" : 9999,
+    "DiffuseHorizontalRadiation" : 9999,
+    "GlobalHorizontalIlluminance" : 999999,
+    "DirectNormalIlluminance" : 999999,
+    "DiffuseHorizontalIlluminance" : 999999,
+    "ZenithLuminance" : 9999,
+    "WindDirection" : 999,
+    "WindSpeed" : 999,
+    "TotalSkyCover" : 99,
+    "OpaqueSkyCover" : 99,
+    "Visibility" : 9999,
+    "CeilingHeight" : 99999,
+    "PrecipitableWater" : 999,
+    "AerosolOpticalDepth" : .999,
+    "SnowDepth" : 999,
+    "DaysSinceLastSnowfall" : 99,
+    "Albedo" : 999,
+    "LiquidPrecipitationDepth" : 999,
+    "LiquidPrecipitationQuantity" : 99,
+}
+
+SIA4028_EXPECTED_COLUMNS = [
+    "station","time.yy","time.mm","time.dd","time.hh",
+    "temp", "relhum", "vappres", "dewpt", "mixratio", "wetbulb", "enthalpy", "precip", "airpres",
+    "winddir", "windmean", "windmax",
+    "rad.global", "rad.direct", "rad.diffus", "rad.vert.N", "rad.vert.E", "rad.vert.S", "rad.vert.W",
+    "ir.horiz", "cloudcov", "albedo", "emissivity"
+]
+
+SIA4028_COLUMN_RENAME = {
+    "time.yy" : "Year",
+    "time.mm" : "Month",
+    "time.dd" : "Day",
+    "time.hh" : "Hour",
 }
 
 def read_epw_like_aligned(path: str, label: str = None,
                            ref_year: int = REFERENCE_YEAR,
                            leap_policy: str = LEAP_DAY_POLICY) -> pd.DataFrame:
-    df = pd.read_csv(path, skiprows=8, header=None, low_memory=False)
-    df = df.rename(columns=COLUMN_RENAME)
+    if os.path.splitext(path)[1].lower() == ".epw":
+        print("Reading epw file")
+        df = pd.read_csv(path, skiprows=8, header=None, low_memory=False)
+        df = df.rename(columns=EPW_COLUMN_RENAME)
+    elif os.path.splitext(path)[1].lower() == ".csv":
+        print("Reading csv file")
+        df = pd.read_csv(path, skiprows=0, low_memory=False)
+        if list(df.columns) != SIA4028_EXPECTED_COLUMNS:
+            print("Error reading .csv file : unexpected column names.")
+            return
+        df = df.rename(columns=SIA4028_COLUMN_RENAME)
+        df["Minute"] = 60
+    else :
+        print("Error reading weather file : the file format is unknown.")
+        return
 
     for c in ["Year", "Month", "Day", "Hour", "Minute"]:
         df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
-    for c in COLUMN_RENAME.values():
-        if c not in ["Year", "Month", "Day", "Hour", "Minute"] and c in df.columns:
+
+    #for c in EPW_COLUMN_RENAME.values():
+    for c in df.columns:
+        if c not in ["Year", "Month", "Day", "Hour", "Minute"]:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
     if leap_policy != "keep":
@@ -66,11 +126,18 @@ def read_epw_like_aligned(path: str, label: str = None,
     minutes_since_midnight = minutes_since_midnight.where(minute != 60, hour * 60)
     dt = base_date + pd.to_timedelta(minutes_since_midnight, unit="m")
 
-    meteo_cols = [c for c in COLUMN_RENAME.values()
+    meteo_cols = [c for c in EPW_COLUMN_RENAME.values()
                   if c not in ["Year", "Month", "Day", "Hour", "Minute"] and c in df.columns]
     out = df[meteo_cols].copy()
     out.insert(0, "datetime", dt)
     out["source"] = label if label else os.path.basename(path)
+
+
+    # ✅ Remplacer les valeurs sentinelles par NaN
+    for var, nan_val in EPW_NAN_VALUE_MAP.items():
+        if var in out.columns:
+            out[var] = out[var].mask(out[var] >= nan_val)
+
     return out
 
 def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv"),
