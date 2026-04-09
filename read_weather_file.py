@@ -1,8 +1,8 @@
 
-# epw_io.py
+# read_weather_file.py
 import os
 import pandas as pd
-from config import REFERENCE_YEAR, LEAP_DAY_POLICY
+from config import REFERENCE_YEAR, LEAP_DAY_POLICY, VARIABLE_MAP, UNIT_CONVERSIONS
 
 EPW_COLUMN_RENAME = {
     0:"Year", 1:"Month", 2:"Day", 3:"Hour", 4:"Minute",
@@ -65,6 +65,25 @@ EPW_NAN_VALUE_MAP = {
     "LiquidPrecipitationQuantity" : 99,
 }
 
+SIA2028_2010_EXPECTED_COLUMNS = [
+    "time.yy","time.mm","time.dd","time.hh",
+    "tre200h0","prestahs","ure200h0","rre150h0",
+    "fkl010h0","fkl010h1","dkl010h0",
+    "tso100hs","nto000sw",
+    "gls","str.diffus","str.direkt",
+    "str.vert.E","str.vert.S","str.vert.W","str.vert.N",
+    "bodenalbedo",
+    "ir.horizontal","ir.vertikal.S",
+    "bodenemissivitaet",
+    "dewpt","enthalpy","mixratio","wetbulb"
+]
+
+SIA2028_2023_EXPECTED_COLUMNS = [
+    "time.yy", "time.mm", "time.dd", "time.hh",
+    "tre200h0", "ure200h0", "fkl010h0", "fkl010h1", "dkl010h0",
+    "skycover",    "gls", "str.diffus", "str.direkt"
+]
+
 SIA4028_EXPECTED_COLUMNS = [
     "station","time.yy","time.mm","time.dd","time.hh",
     "temp", "relhum", "vappres", "dewpt", "mixratio", "wetbulb", "enthalpy", "precip", "airpres",
@@ -73,40 +92,96 @@ SIA4028_EXPECTED_COLUMNS = [
     "ir.horiz", "cloudcov", "albedo", "emissivity"
 ]
 
-SIA4028_COLUMN_RENAME = {
+SIA_TIME_COLUMN_RENAME = {
     "time.yy" : "Year",
     "time.mm" : "Month",
     "time.dd" : "Day",
     "time.hh" : "Hour",
 }
 
-def read_epw_like_aligned(path: str, label: str = None,
-                           ref_year: int = REFERENCE_YEAR,
-                           leap_policy: str = LEAP_DAY_POLICY) -> pd.DataFrame:
-    if os.path.splitext(path)[1].lower() == ".epw":
-        print("Reading epw file")
+
+def build_reverse_variable_map(variable_map):
+    '''Exemple :
+    Input :
+    variable_map = {
+        "Dry bulb (°C)": ["DryBulb", "temp"],
+        "Dew point (°C)": ["DewPoint","dewpt"],
+    }
+    Output :
+    reverse = {
+        "DryBulb": "Dry bulb (°C)",
+        "temp": "Dry bulb (°C)",
+        "DewPoint": "Dew point (°C)",
+        "dewpt": "Dew point (°C)",
+        ...
+    }
+    '''
+    reverse_map = {}
+    for unified_name, variants in variable_map.items():
+        for colname in variants:
+            if colname:  # ignore strings vides
+                reverse_map[colname] = unified_name
+    return reverse_map
+
+
+def rename_columns_to_unified(df, variable_map):
+    #Utilise le reverse variable_map pour renommer les colonnes
+    reverse_map = build_reverse_variable_map(variable_map)
+    new_cols = {}
+
+    for col in df.columns:
+        if col in reverse_map:
+            new_cols[col] = reverse_map[col]  # rename to unified name
+    return df.rename(columns=new_cols)
+
+
+
+def read_weather_file(path: str, label: str = None,
+                      ref_year: int = REFERENCE_YEAR,
+                      leap_policy: str = LEAP_DAY_POLICY) -> pd.DataFrame:
+
+    #Load dataframe according to file extension
+    file_ext = os.path.splitext(path)[1].lower()
+    if file_ext == ".epw":
         df = pd.read_csv(path, skiprows=8, header=None, low_memory=False)
-        df = df.rename(columns=EPW_COLUMN_RENAME)
-    elif os.path.splitext(path)[1].lower() == ".csv":
-        print("Reading csv file")
+    elif file_ext == ".csv":
         df = pd.read_csv(path, skiprows=0, low_memory=False)
-        if list(df.columns) != SIA4028_EXPECTED_COLUMNS:
-            print("Error reading .csv file : unexpected column names.")
-            return
-        df = df.rename(columns=SIA4028_COLUMN_RENAME)
-        df["Minute"] = 60
-    else :
-        print("Error reading weather file : the file format is unknown.")
+    else:
+        print("[WARN] Error reading weather file : the file format is unknown.")
         return
 
-    for c in ["Year", "Month", "Day", "Hour", "Minute"]:
-        df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
+    #Determine data format and rename columns accordingly
+    if file_ext == ".epw":
+        data_format = "EPW"
+        print("Reading .epw file")
+        df = df.rename(columns=EPW_COLUMN_RENAME)  # Colonnes sans noms -> noms de variables EPW
+    elif list(df.columns) == SIA4028_EXPECTED_COLUMNS:
+        data_format = "SIA 4028"
+        print("Reading .csv file with SIA 4028 column names.")
+        df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
+        df["Minute"] = 60
+    elif list(df.columns) == SIA2028_2023_EXPECTED_COLUMNS:
+        data_format = "SIA 2028:2023"
+        print("Reading .csv file with SIA 2028:2023 column names.")
+        df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
+        df["Minute"] = 60
+    elif list(df.columns) == SIA2028_2010_EXPECTED_COLUMNS:
+        data_format = "SIA 2028:2010"
+        print("Reading .csv file with SIA 2028:2010 column names.")
+        df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
+        df["Minute"] = 60
+    else:
+        print("[WARN] Reading .csv file with unknown column names - skipping this file.")
+        return
 
-    #for c in EPW_COLUMN_RENAME.values():
+    #Convert to numeric
     for c in df.columns:
         if c not in ["Year", "Month", "Day", "Hour", "Minute"]:
             df[c] = pd.to_numeric(df[c], errors="coerce")
+        else:
+            df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
 
+    #Handle date format : convert ref_year, month, day, minute to datetime
     if leap_policy != "keep":
         is_feb29 = (df["Month"] == 2) & (df["Day"] == 29)
         if leap_policy == "drop":
@@ -126,23 +201,30 @@ def read_epw_like_aligned(path: str, label: str = None,
     minutes_since_midnight = minutes_since_midnight.where(minute != 60, hour * 60)
     dt = base_date + pd.to_timedelta(minutes_since_midnight, unit="m")
 
-    meteo_cols = [c for c in EPW_COLUMN_RENAME.values()
-                  if c not in ["Year", "Month", "Day", "Hour", "Minute"] and c in df.columns]
-    out = df[meteo_cols].copy()
-    out.insert(0, "datetime", dt)
-    out["source"] = label if label else os.path.basename(path)
+    #Unit conversion
+    if data_format in UNIT_CONVERSIONS:
+        for col, factor in UNIT_CONVERSIONS[data_format].items():
+            if col in df.columns:
+                df[col] *= factor
 
+    #Column names conversion
+    df = rename_columns_to_unified(df, VARIABLE_MAP)
+
+    df.insert(0, "datetime", dt)
+    df["source"] = label if label else os.path.basename(path)
 
     # ✅ Remplacer les valeurs sentinelles par NaN
     for var, nan_val in EPW_NAN_VALUE_MAP.items():
-        if var in out.columns:
-            out[var] = out[var].mask(out[var] >= nan_val)
+        if var in df.columns:
+            df[var] = df[var].mask(df[var] >= nan_val)
 
-    return out
+    #print(out.columns)
+    return df
 
 def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv"),
                                   ref_year: int = REFERENCE_YEAR,
                                   leap_policy: str = LEAP_DAY_POLICY) -> pd.DataFrame:
+    print("Loading weather files...")
     if files is None:
         files = [f for f in os.listdir(folder) if os.path.splitext(f)[1].lower() in exts]
     series = []
@@ -152,12 +234,14 @@ def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv")
             print(f"[WARN] Missing file: {path}")
             continue
         try:
-            series.append(read_epw_like_aligned(path, label=os.path.splitext(fname)[0],
-                                                ref_year=ref_year, leap_policy=leap_policy))
+            series.append(read_weather_file(path, label=os.path.splitext(fname)[0],
+                                            ref_year=ref_year, leap_policy=leap_policy))
         except Exception as e:
             print(f"[WARN] Failed reading {fname}: {e}")
     if not series:
         raise RuntimeError("No valid EPW/CSV files loaded.")
     all_df = pd.concat(series, ignore_index=True).sort_values("datetime")
+
+    #print(all_df.columns)
 
     return all_df

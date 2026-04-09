@@ -2,7 +2,7 @@
 # page_epw.py
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from config import FREQ_MAP, FUNC_MAP, EPW_VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS
+from config import FREQ_MAP, FUNC_MAP, VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS, WEATHER_STATIONS
 
 
 def create_page_epw():
@@ -14,8 +14,29 @@ def create_page_epw():
     # ---- Paramètres communs (sans CardHeader) ----
     common_params = dbc.Card(
         dbc.CardBody([
+            html.Label("Station", style={'fontWeight': 'bold'}),
+            dcc.Dropdown(
+                id='station',
+                options=[
+                    {'label': s, 'value': s}
+                    for s in WEATHER_STATIONS
+                ],
+                value=list(WEATHER_STATIONS.keys())[18],
+                clearable=False
+            ),
+            html.Label("Fichier(s) disponible(s)", style={'fontWeight': 'bold'}),
+            dcc.Dropdown(
+                id='station_files',
+                options=[
+                    {'label': s, 'value': s}
+                    for s in WEATHER_STATIONS
+                ],
+                value=list(WEATHER_STATIONS.keys())[18],
+                clearable=False
+            ),
+
             # Fichiers EPW
-            html.Label("Fichiers EPW", style={'fontWeight': 'bold'}),
+            html.Label("Fichiers météo", style={'fontWeight': 'bold'}),
             dbc.Checklist(
                 id='common-sources',
                 options=[],          # alimenté par callback
@@ -72,10 +93,10 @@ def create_page_epw():
                             dcc.Dropdown(
                                 id='epw-var',
                                 options=[
-                                    {'label': label, 'value': EPW_VARIABLE_MAP[label]}
-                                    for label in EPW_VARIABLE_MAP.keys()
+                                    {'label': var, 'value': var}
+                                    for var in VARIABLE_MAP.keys()
                                 ],
-                                value=list(EPW_VARIABLE_MAP.values())[0],
+                                value=list(VARIABLE_MAP.keys())[0],
                                 clearable=False
                             ),
 
@@ -191,10 +212,10 @@ def create_page_epw():
                             dcc.Dropdown(
                                 id='heatmap-var',
                                 options=[
-                                    {'label': label, 'value': EPW_VARIABLE_MAP[label]}
-                                    for label in EPW_VARIABLE_MAP.keys()
+                                    {'label': label, 'value': label}
+                                    for label in VARIABLE_MAP.keys()
                                 ],
-                                value=list(EPW_VARIABLE_MAP.values())[0],
+                                value=list(VARIABLE_MAP.keys())[0],
                                 clearable=False
                             ),
 

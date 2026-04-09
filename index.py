@@ -7,13 +7,14 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np #
+import os
 
 from navbar import create_navbar
 from home import create_page_home
 from page_epw import create_page_epw
-from epw_io import load_weather_data_from_folder
+from read_weather_file import load_weather_data_from_folder
 from processing import compute_aggregated_df, filter_by_period
-from config import YLABEL_MAP, REFERENCE_YEAR, FREQ_MAP, EPW_VARIABLE_MAP, FUNC_MAP, COLOR_MAP_BY_VAR, MANUAL_COLOR_MAP_OPTIONS
+from config import VAR_NAME_EN_TO_FR, REFERENCE_YEAR, FREQ_MAP, VARIABLE_MAP, FUNC_MAP, COLOR_MAP_BY_VAR, MANUAL_COLOR_MAP_OPTIONS
 from windrose_dash import build_windrose_figure
 
 PAD_RATIO = 0.05  # ajuste à 0.02..0.05 pour rapprocher visuellement les bornes de l'axe y en mode 'Fixe' et 'Auto'
@@ -21,9 +22,16 @@ PAD_RATIO = 0.05  # ajuste à 0.02..0.05 pour rapprocher visuellement les bornes
 # >>> Chemin dossier à adapter
 FOLDER = r"C:\Users\n.rey\PycharmProjects\EPWanalytics\data"
 
-all_weather_data_df = load_weather_data_from_folder(FOLDER, files=None)
-all_weather_data_df['datetime'] = pd.to_datetime(all_weather_data_df['datetime'], errors='coerce')
-# Tu peux aussi passer ce DF via dcc.Store pour être "stateless":
+
+#all_weather_data_df = load_weather_data_from_folder(FOLDER, files=None)
+if os.environ.get("WERKZEUG_RUN_MAIN") == "true":                               #cette condition assure que les fichiers ne soient charger que après le reloader (Dash en mode debug), pour éviter qu'ils ne soient chargés deux fois
+    all_weather_data_df = load_weather_data_from_folder(FOLDER, files=None)
+else:
+    all_weather_data_df = None
+
+
+
+#all_weather_data_df['datetime'] = pd.to_datetime(all_weather_data_df['datetime'], errors='coerce')     #déjà fait dans "read_weather_file"
 
 nav = create_navbar()
 
@@ -84,6 +92,7 @@ def _parse_mmdd(label: str, default=(1, 1)):
     State('common-sources', 'value')
 )
 def populate_sources(pathname, current_value):
+    # Crée la liste des weather files disponibles
     if pathname != '/epw':
         raise PreventUpdate
 
@@ -104,6 +113,14 @@ def populate_sources(pathname, current_value):
         value = sources[:1] if sources else []
 
     return options, value
+
+@app.callback(
+    Output('station_files','value'),
+    Input('station','value')
+)
+def populate_weather_file_list():
+
+    return
 
 @app.callback(
     Output('common-sources-warning', 'children'),
@@ -265,7 +282,6 @@ def persist_axes(relayout, start_label, end_label, selected_sources,
     ],
     State('axes-store', 'data')
 )
-
 def update_epw_graph(active_tab, selected_sources, start_label, end_label,var_col, period_label, func_label, x_mode,
                      y_mode, ymin, ymax,axes_store):
 
@@ -289,10 +305,8 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,var_co
     )
 
     fig = go.Figure()
-    print(f"x_mode : {x_mode}")
     # 2) Construire les traces selon x_mode
     if x_mode == 'date':
-        print('mode date')
         # Axe x : Mode temporel
         mode_line = 'lines' if period_label in ('Heure', 'h', 'Hour') else 'lines+markers'
         for src, df_src in plot_df.groupby("source"):
@@ -337,7 +351,7 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,var_co
         template='plotly_white',
         title=f"{var_col} : {func_label} par {period_label}" + ("" if x_mode == 'date' else f" — {subtitle}") if func_label != "Somme cumulée" else f"{var_col} : {func_label} par {period_label}",
         xaxis_title=x_title,
-        yaxis_title=YLABEL_MAP.get(var_col, var_col),
+        yaxis_title=VAR_NAME_EN_TO_FR.get(var_col, var_col),
         hovermode='x unified',
         legend=dict(
             x=0.99, y=0.99, xanchor='right', yanchor='top',
@@ -345,58 +359,6 @@ def update_epw_graph(active_tab, selected_sources, start_label, end_label,var_co
         ),
         margin=dict(l=60, r=20, t=60, b=60),
     )
-
-    '''# 4) Zoom X = période commune
-    x0, x1 = _mmdd_to_ref_dates(start_label, end_label, REFERENCE_YEAR)
-    fig.update_xaxes(range=[x0, x1])
-
-    # 5) Axe Y : Auto / Manuel (inchangé)
-    def pad_range(y0, y1, pad_ratio=0.05, min_pad=1e-6):
-        if y0 is None or y1 is None:
-            return None
-        a, b = float(y0), float(y1)
-        if a == b:
-            pad = max(min_pad, abs(a) * pad_ratio)
-            return [a - pad, b + pad]
-        lo, hi = (a, b) if a < b else (b, a)
-        span = hi - lo
-        pad = max(min_pad, span * pad_ratio)
-        return [lo - pad, hi + pad]
-
-    def _extract_range_from_relayout(relayout):
-        if not relayout:
-            return None
-        if 'yaxis.range' in relayout and isinstance(relayout['yaxis.range'], (list, tuple)) and len(relayout['yaxis.range']) == 2:
-            y0, y1 = relayout['yaxis.range']
-            return [float(y0), float(y1)]
-        y0 = relayout.get('yaxis.range[0]')
-        y1 = relayout.get('yaxis.range[1]')
-        if y0 is not None and y1 is not None:
-            return [float(y0), float(y1)]
-        return None
-
-    if y_mode == 'Auto':
-        fig.update_yaxes(autorange=True)
-        return fig
-
-    manual_range = _extract_range_from_relayout(relayout) if relayout else None
-    if manual_range is None:
-        try:
-            if ymin is not None and ymax is not None:
-                y0f, y1f = sorted([float(ymin), float(ymax)])
-                manual_range = [y0f, y1f]
-        except Exception:
-            manual_range = None
-
-    if manual_range is None:
-        if plot_df.empty:
-            fig.update_yaxes(autorange=True)
-            return fig
-        dmin, dmax = float(plot_df[var_col].min()), float(plot_df[var_col].max())
-        manual_range = pad_range(dmin, dmax) if dmin == dmax else [dmin, dmax]
-
-    fig.update_yaxes(range=pad_range(*manual_range))
-    return fig'''
 
     # 4) Gestion de l'axe X (période / store / tri)
     axes_store = axes_store or {'x': None, 'y': None}
@@ -629,7 +591,7 @@ def _build_heatmap_matrix(df: pd.DataFrame, var_col: str) -> pd.DataFrame:
     mat = mat.reindex(index=hours, columns=doys)
     return mat
 
-# Afficher / masker la sélection mannuelle de la colormap
+# Afficher / masker la sélection manuelle de la colormap
 @app.callback(
     Output('heatmap-colormap-choice-container', 'style'),
     Input('heatmap-colormap', 'value')
@@ -751,7 +713,7 @@ def update_heatmap(active_tab, selected_sources, start_label, end_label,
                     colorscale=colorscale,
                     zmin=zmin_final, zmax=zmax_final,
                     colorbar=dict(
-                        title=YLABEL_MAP.get(var_col, var_col),
+                        title=VAR_NAME_EN_TO_FR.get(var_col, var_col),
                         thickness=12,
                         len=0.8
                     ) if i == 0 else None,   # colorbar uniquement sur le 1er subplot
@@ -773,12 +735,10 @@ def update_heatmap(active_tab, selected_sources, start_label, end_label,
     # Layout global
     fig.update_layout(
         template='plotly_white',
-        title="Heatmap — " + YLABEL_MAP.get(var_col, var_col),
+        title="Heatmap — " + VAR_NAME_EN_TO_FR.get(var_col, var_col),
         margin=dict(l=60, r=20, t=60, b=60),
     )
     return fig
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)

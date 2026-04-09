@@ -22,12 +22,12 @@ def build_windrose_figure(df_src, start_label, end_label, n_dir_bins, normalize)
     sub = filter_by_period(df_src, sm, sd, em, ed)
 
     # 2) Colonnes vent: m/s → km/h + nettoyage (sentinelles)
-    dfw = sub[['WindDirection', 'WindSpeed']].copy()
+    dfw = sub[['Wind direction (°)', 'Wind speed mean (m/s)']].copy()
 
 
-    spd = dfw['WindSpeed'].astype(float) * 3.6            # m/s → km/h
+    spd = dfw['Wind speed mean (m/s)'].astype(float) * 3.6            # m/s → km/h
 
-    ang = dfw['WindDirection'].astype(float)
+    ang = dfw['Wind direction (°)'].astype(float)
     # EPW sentinelles/aberrantes (ex. 999) → ignore
     spd = spd.mask((spd < 0) | (spd > 200))
     ang = ang.mask((ang < 0) | (ang >= 360))
