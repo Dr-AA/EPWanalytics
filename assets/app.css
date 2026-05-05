@@ -1,0 +1,50 @@
+
+/* Espace plein écran (moins la navbar bootstrap d'environ 90px de haut) */
+.page-root {
+  height: calc(100vh - 90px);
+  /* Ajuste 90px si ta navbar est plus grande/petite */
+}
+
+/* Utiliser toute la hauteur pour la grille (gauche/droite) */
+.page-grid {
+  height: 100%;
+}
+
+/* Colonne de gauche : scroll si le contenu dépasse */
+.left-col, .left-panel {
+  height: 100%;
+}
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.left-panel > .card,
+.left-panel > .dash-tabs {
+  /* les blocs prennent la largeur */
+  width: 100%;
+}
+.left-panel .card-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.left-panel {
+  overflow-y: auto;
+  padding-right: 4px; /* un peu d'air pour la scrollbar */
+}
+
+/* Colonne de droite : occupe toute la hauteur */
+.right-col, .right-display {
+  height: 100%;
+}
+.right-display {
+  position: relative;
+}
+
+/* Les Graphs occupent toute la zone d'affichage */
+#epw-graph, #epw-windrose, #heat-map {
+  height: 100% !important; /* force la pleine hauteur */
+}
+
+/* Optionnel : réduire le padding des tabs */
+.dash-tabs { margin-top: 0 !important; }

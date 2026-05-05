@@ -2,8 +2,7 @@
 # config.py
 REFERENCE_YEAR = 2001
 LEAP_DAY_POLICY = "drop"  # 'drop' | 'keep' | 'merge_to_28'
-
-
+DATA_ROOT = "data"
 
 # VARIABLE_MAP : dictionnaire avec le noms de colonne unifiés (keys), et les noms de colonnes correspondant dans les formats suivants :
 # 1) epw
@@ -190,3 +189,13 @@ FUNC_MAP = {
     # qui fera une agrégation par 'sum' puis un cumsum (par source).
 
 }
+
+
+COLOR_SEQUENCE = [
+    "#1f77b4",  # bleu
+    "#ff7f0e",  # orange
+    "#2ca02c",  # vert
+    "#d62728",  # rouge
+    "#9467bd",  # violet
+    "#8c564b",
+]

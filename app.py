@@ -8,7 +8,14 @@ import dash_bootstrap_components as dbc
 # SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, YETI.
 # https://dash-bootstrap-components.opensource.faculty.ai/docs/themes/
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True,
-                external_stylesheets=[dbc.themes.LUX])
 
+
+app = dash.Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    external_stylesheets=[
+        dbc.themes.LUX,
+        dbc.icons.BOOTSTRAP,  # pour l'affichage de l'icone "oeil"
+    ],
+)
 server = app.server  # utile pour déploiement

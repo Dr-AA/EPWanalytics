@@ -1,9 +1,36 @@
 
 # page_epw.py
+import os
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from config import FREQ_MAP, FUNC_MAP, VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS, WEATHER_STATIONS
+from config import FREQ_MAP, FUNC_MAP, VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS, WEATHER_STATIONS, DATA_ROOT
 
+def list_available_stations():
+    """Retourne les stations pour lesquelles au moins un fichier météo existe."""
+    available = []
+
+    for long_name, code in WEATHER_STATIONS.items():
+        station_dir = os.path.join(DATA_ROOT, code)
+        if not os.path.isdir(station_dir):
+            continue
+
+        # Cherche dans les sous-dossiers
+        has_data = False
+        for sub in os.listdir(station_dir):
+            subpath = os.path.join(station_dir, sub)
+            if not os.path.isdir(subpath):
+                continue
+
+            # Vérifie si ce sous-dossier contient au moins un fichier CSV ou EPW
+            for f in os.listdir(subpath):
+                if f.lower().endswith((".csv", ".epw")):
+                    has_data = True
+                    break
+            if has_data:
+                break
+        if has_data:
+            available.append({"label": long_name, "value": code})
+    return available
 
 def create_page_epw():
     """
@@ -14,49 +41,47 @@ def create_page_epw():
     # ---- Paramètres communs (sans CardHeader) ----
     common_params = dbc.Card(
         dbc.CardBody([
+            #1 Choix de la station
             html.Label("Station", style={'fontWeight': 'bold'}),
             dcc.Dropdown(
-                id='station',
-                options=[
-                    {'label': s, 'value': s}
-                    for s in WEATHER_STATIONS
-                ],
-                value=list(WEATHER_STATIONS.keys())[18],
-                clearable=False
-            ),
-            html.Label("Fichier(s) disponible(s)", style={'fontWeight': 'bold'}),
-            dcc.Dropdown(
-                id='station_files',
-                options=[
-                    {'label': s, 'value': s}
-                    for s in WEATHER_STATIONS
-                ],
-                value=list(WEATHER_STATIONS.keys())[18],
+                id='station-dropdown',
+                options=list_available_stations(),
+                value=None,
+                placeholder="Choisir une station",
                 clearable=False
             ),
 
-            # Fichiers EPW
-            html.Label("Fichiers météo", style={'fontWeight': 'bold'}),
-            dbc.Checklist(
-                id='common-sources',
-                options=[],          # alimenté par callback
-                value=[],            # alimenté par callback
-                inline=False,
+            #2 Choix du fichier
+            html.Label("Fichier", style={'fontWeight': 'bold'}),
+            dcc.Dropdown(
+                id='dataset-dropdown',
+                options=[],
+                value=None,
+                placeholder="Choisir un fichier",
+                clearable=False
+            ),
+
+            #3 Nom du fichier + bouton
+            html.Button("Charger ce fichier", id="load-file-btn", style={"marginTop": "8px"}),
+
+            dcc.Store(id="loaded-files-store", data={}),  # dict {filename: df_json}
+            #html.Hr(),
+
+            #4 Liste des fichiers chargés
+            html.Label("Données chargées", style={'fontWeight': 'bold', "display": "block"}),
+
+            html.Div(
+                id="loaded-sources-container",
                 style={
-                    'maxHeight': '160px',
-                    'overflowY': 'auto',
-                    'border': '1px solid #eee',
-                    'padding': '6px',
-                    'borderRadius': '6px'
+                    "border": "1px solid #eee",
+                    "borderRadius": "6px",
+                    "padding": "6px",
+                    "maxHeight": "200px",
+                    "overflowY": "auto",
                 }
             ),
-            html.Small(
-                id='common-sources-warning',
-                className='text-muted',
-                style={'display': 'block', 'marginTop': '6px'}
-            ),
 
-            # Choix de la Période
+            #5 Choix de la Période
             html.Div([
                 html.Label("Période (DD.MM → DD.MM)", style={'fontWeight': 'bold', 'marginTop': '12px'}),
                 html.Div([

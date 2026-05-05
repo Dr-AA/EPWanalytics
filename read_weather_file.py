@@ -211,14 +211,13 @@ def read_weather_file(path: str, label: str = None,
     df = rename_columns_to_unified(df, VARIABLE_MAP)
 
     df.insert(0, "datetime", dt)
-    df["source"] = label if label else os.path.basename(path)
+    df["source"] = os.path.basename(path)
 
     # ✅ Remplacer les valeurs sentinelles par NaN
     for var, nan_val in EPW_NAN_VALUE_MAP.items():
         if var in df.columns:
             df[var] = df[var].mask(df[var] >= nan_val)
 
-    #print(out.columns)
     return df
 
 def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv"),
