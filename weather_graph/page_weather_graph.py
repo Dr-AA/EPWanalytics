@@ -1,9 +1,9 @@
 
-# page_epw.py
+# page_weather_graph.py
 import os
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from config import FREQ_MAP, FUNC_MAP, VARIABLE_MAP, MANUAL_COLOR_MAP_OPTIONS, WEATHER_STATIONS, DATA_ROOT
+from weather_graph.config_weather_graph import VARIABLE_MAP, FREQ_MAP, FUNC_MAP, MANUAL_COLOR_MAP_OPTIONS, WEATHER_STATIONS, DATA_ROOT
 
 def list_available_stations():
     """Retourne les stations pour lesquelles au moins un fichier météo existe."""
@@ -32,7 +32,7 @@ def list_available_stations():
             available.append({"label": long_name, "value": code})
     return available
 
-def create_page_epw():
+def create_page_weather_graph():
     """
     Colonne gauche : paramètres communs + onglets (réglages spécifiques).
     Colonne droite : zone d'affichage (graph / windrose / heatmap).
@@ -41,6 +41,12 @@ def create_page_epw():
     # ---- Paramètres communs (sans CardHeader) ----
     common_params = dbc.Card(
         dbc.CardBody([
+            #0 Stores
+            dcc.Store(id="loaded-files-store", data={}),
+            dcc.Store(id="display-settings-store", data={}),
+            dcc.Store(id="aggregated-data-store", data=None),
+            dcc.Store(id="event-data-store", data=None),
+
             #1 Choix de la station
             html.Label("Station", style={'fontWeight': 'bold'}),
             dcc.Dropdown(
@@ -63,9 +69,6 @@ def create_page_epw():
 
             #3 Nom du fichier + bouton
             html.Button("Charger ce fichier", id="load-file-btn", style={"marginTop": "8px"}),
-
-            dcc.Store(id="loaded-files-store", data={}),  # dict {filename: df_json}
-            #html.Hr(),
 
             #4 Liste des fichiers chargés
             html.Label("Données chargées", style={'fontWeight': 'bold', "display": "block"}),
@@ -105,6 +108,7 @@ def create_page_epw():
         value='tab-plot',
         style={'marginTop': '0px'},
         children=[
+
             # --- Tab Graphe ---
             dcc.Tab(
                 label='Graphe',
@@ -168,13 +172,13 @@ def create_page_epw():
 
                             html.Div(
                                 [
-                                    html.Label("Ymin", style={'marginRight': '10px'}),
+                                    html.Label("Y min", style={'marginRight': '10px'}),
                                     dcc.Input(
                                         id='ymin', type='number', placeholder='Ymin',
                                         debounce=True, style={'width': '45%'}
                                     ),
                                     html.Label(
-                                        "Ymax", style={'marginLeft': '10px', 'marginRight': '10px'}
+                                        "Y max", style={'marginLeft': '10px', 'marginRight': '10px'}
                                     ),
                                     dcc.Input(
                                         id='ymax', type='number', placeholder='Ymax',
@@ -184,6 +188,68 @@ def create_page_epw():
                                 id='y-range-container',
                                 style={'marginTop': '10px'}
                             ),
+
+                            html.Label("Evènements", style={'fontWeight': 'bold','marginTop': '10px'}),
+                            dcc.Checklist(
+                                id="event-enabled", value=[], style={"marginTop": "5px"},
+                                options=[
+                                    {
+                                        "label": " Mettre en surbrillance les périodes où :",
+                                        "value": "enabled"
+                                    }
+                                ],
+                            ),
+                            dcc.Dropdown(
+                                id='event-var',
+                                options=[
+                                    {'label': var, 'value': var}
+                                    for var in VARIABLE_MAP.keys()
+                                ],
+                                value='Dry bulb (°C)', clearable=False,
+                            ),
+                            dcc.Dropdown(
+                                id='event-func',
+                                options=[{'label': label, 'value': label} for label in FUNC_MAP.keys()],
+                                value='Moyenne',
+                                clearable=False
+                            ),
+                            dcc.Dropdown(
+                                id='event-period',
+                                options=[{'label': label, 'value': label} for label in FREQ_MAP.keys()],
+                                value='Jour',
+                                clearable=False
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("Est inférieur ou égal à", style={'margin': '0 10px'}),
+                                    dcc.Input(
+                                        id='event-threshold-max',
+                                        type='number', placeholder='Seuil inférieur',
+                                        debounce=True, style={'width': '130px'}
+                                    ),
+                                ]
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("ET supérieur ou égal à", style={'margin': '0 10px'}),
+                                    dcc.Input(
+                                        id='event-threshold-min',
+                                        type='number', placeholder='Seuil supérieur',
+                                        debounce=True, style={'width': '130px'}
+                                    ),
+                                ]
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("Pour une période min. de", style={'margin': '0 10px'}),
+                                    dcc.Input(
+                                        id='event-duration-min',
+                                        type='number', placeholder='', min=1, step=1, value=1,
+                                        debounce=True, style={'width': '60px'}
+                                    ),
+                                    html.Span("", id = 'event-period-text'),
+                                ]
+                            )
                         ]),
                         className='mt-2'
                     )

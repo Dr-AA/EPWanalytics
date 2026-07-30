@@ -2,7 +2,25 @@
 # read_weather_file.py
 import os
 import pandas as pd
-from config import REFERENCE_YEAR, LEAP_DAY_POLICY, VARIABLE_MAP, UNIT_CONVERSIONS
+from weather_graph.config_weather_graph import VARIABLE_MAP
+
+REFERENCE_YEAR = 2001
+LEAP_DAY_POLICY = "drop"  # 'drop' | 'keep' | 'merge_to_28'
+
+UNIT_CONVERSIONS = {
+    "EPW": {
+        "TotalSkyCover": 10.0,   # tenths → %
+        "OpaqueSkyCover": 10.0,  # tenths → %
+    },
+    "SIA 4028": {
+    },
+    "SIA 2028:2023": {
+        "Air pressure (Pa)": 100.0,         # hPa → Pa
+        "Albedo": 1/100.0,                  # % → fraction
+    },
+    "SIA 2028:2010":{
+    }
+}
 
 EPW_COLUMN_RENAME = {
     0:"Year", 1:"Month", 2:"Day", 3:"Hour", 4:"Minute",
@@ -92,6 +110,13 @@ SIA4028_EXPECTED_COLUMNS = [
     "ir.horiz", "cloudcov", "albedo", "emissivity"
 ]
 
+METEOSUISSE_EXPECTED_COLUMNS = [
+    "station_abbr","reference_timestamp","tre200h0","tre200hn","tre200hx","tre005h0","tre005hn","ure200h0","pva200h0","tde200h0",
+    "prestah0","pp0qffh0","pp0qnhh0","ppz700h0","ppz850h0","fkl010h1","dkl010h0","fkl010h0","fu3010h0","fu3010h1","fkl010h3",
+    "fu3010h3","wcc006h0","fve010h0","rre150h0","htoauths","gre000h0","oli000h0","olo000h0","osr000h0","ods000h0","sre000h0",
+    "erefaoh0","tso005hs","tso010hs","tso020hs"
+]
+
 SIA_TIME_COLUMN_RENAME = {
     "time.yy" : "Year",
     "time.mm" : "Month",
@@ -170,9 +195,19 @@ def read_weather_file(path: str, label: str = None,
         print("Reading .csv file with SIA 2028:2010 column names.")
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
         df["Minute"] = 60
+    elif list(df.columns) == METEOSUISSE_EXPECTED_COLUMNS:
+        data_format = "MeteoSuisse valeurs mesurées"
+        print("Reading .csv file with Meteosuisse (measured values) column names.")
+        df["reference_timestamp"] = pd.to_datetime(df["reference_timestamp"],format="%d.%m.%Y %H:%M")
+        df["Year"] = df["reference_timestamp"].dt.year
+        df["Month"] = df["reference_timestamp"].dt.month
+        df["Day"] = df["reference_timestamp"].dt.day
+        df["Hour"] = df["reference_timestamp"].dt.hour
+        df["Minute"] = 60
     else:
         print("[WARN] Reading .csv file with unknown column names - skipping this file.")
         return
+    print(f"Reading file with data format : {data_format}")
 
     #Convert to numeric
     for c in df.columns:
@@ -211,7 +246,8 @@ def read_weather_file(path: str, label: str = None,
     df = rename_columns_to_unified(df, VARIABLE_MAP)
 
     df.insert(0, "datetime", dt)
-    df["source"] = os.path.basename(path)
+    df["source"] = path
+    df["source_label"] = os.path.basename(path)
 
     # ✅ Remplacer les valeurs sentinelles par NaN
     for var, nan_val in EPW_NAN_VALUE_MAP.items():

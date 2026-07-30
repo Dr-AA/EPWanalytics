@@ -18,7 +18,7 @@ def create_navbar():
                             ],
                         ),
                     ],
-                    brand="EPW Analytics — Visualisations météo",
+                    brand="WeatherFileAnalytics — Visualisation de données météo",
                     brand_style={"textTransform": "capitalize"},
                     brand_href="/",
                     sticky="top",

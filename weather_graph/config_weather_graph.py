@@ -1,7 +1,6 @@
 
-# config.py
-REFERENCE_YEAR = 2001
-LEAP_DAY_POLICY = "drop"  # 'drop' | 'keep' | 'merge_to_28'
+# config_weather_graph.py
+
 DATA_ROOT = "data"
 
 # VARIABLE_MAP : dictionnaire avec le noms de colonne unifiés (keys), et les noms de colonnes correspondant dans les formats suivants :
@@ -9,27 +8,29 @@ DATA_ROOT = "data"
 # 2) csv - SIA4028 année 2023
 # 3) csv - SIA2028 année 2035 et 2060
 # 4) csv - SIA2028 contemporain (ancien jeu de données)
+# 5) csv - Meteosuisse données mesurées
+
 VARIABLE_MAP = {
-    "Dry bulb (°C)": ["DryBulb", "temp", "tre200h0","tre200h0"],
-    "Wet bulb (°C)": ["","wetbulb", "","wetbulb"],
-    "Dew point (°C)": ["DewPoint","dewpt", "","dewpt"],
-    "Relative humidity (%)": ["RelativeHumidity","relhum", "ure200h0", "ure200h0"],
-    "Mixing ratio (g/kg)" : ["", "mixratio","", "mixratio"],
-    "Enthalpy (kJ/kg)" : ["","enthalpy","","enthalpy"],
-    "Wind direction (°)": ["WindDirection","winddir", "dkl010h0", "dkl010h0"],
-    "Wind speed mean (m/s)": ["WindSpeed","windmean", "fkl010h0", "fkl010h0"],
-    "Wind speed max (m/s)" : ["","windmax", "fkl010h1", "fkl010h1"],
+    "Dry bulb (°C)": ["DryBulb", "temp", "tre200h0","tre200h0","tre200h0"],
+    "Wet bulb (°C)": ["","wetbulb", "","wetbulb",""],
+    "Dew point (°C)": ["DewPoint","dewpt", "","dewpt","tde200h0"],
+    "Relative humidity (%)": ["RelativeHumidity","relhum", "ure200h0", "ure200h0","ure200h0"],
+    "Mixing ratio (g/kg)" : ["", "mixratio","", "mixratio",""],
+    "Enthalpy (kJ/kg)" : ["","enthalpy","","enthalpy",""],
+    "Wind direction (°)": ["WindDirection","winddir", "dkl010h0", "dkl010h0","dkl010h0"],
+    "Wind speed mean (m/s)": ["WindSpeed","windmean", "fkl010h0", "fkl010h0","fkl010h0"],
+    "Wind speed max (m/s)" : ["","windmax", "fkl010h1", "fkl010h1","fkl010h1"],
     "Total sky cover (%)": ["TotalSkyCover","cloudcov", "skycover",""],
-    "Global horizontal radiation (Wh/m²)": ["GlobalHorizontalRadiation","rad.global", "gls", "gls"],
-    "Direct normal radiation (Wh/m²)": ["DirectNormalRadiation","rad.direct", "str.direkt", "str.direkt"],
-    "Diffuse horizontal radiation (Wh/m²)": ["DiffuseHorizontalRadiation","rad.diffus", "str.diffus", "str.diffus"],
-    "Horizontal infrared rad. intensity (Wh/m²)" : ["HorizontalInfraredRadiationIntensity","ir.horiz","","ir.horizontal"],
-    "Air pressure (Pa)": ["StationPressure","airpres","", "prestahs"],
-    "Vapor pressure (Pa)": ["","vappres","",""],
-    "Snow Depth (cm)": ["SnowDepth","","",""],
+    "Global horizontal radiation (Wh/m²)": ["GlobalHorizontalRadiation","rad.global", "gls", "gls","gre000h0"],
+    "Direct normal radiation (Wh/m²)": ["DirectNormalRadiation","rad.direct", "str.direkt", "str.direkt", ""],
+    "Diffuse horizontal radiation (Wh/m²)": ["DiffuseHorizontalRadiation","rad.diffus", "str.diffus", "str.diffus","ods000h0"],
+    "Horizontal infrared rad. intensity (Wh/m²)" : ["HorizontalInfraredRadiationIntensity","ir.horiz","","ir.horizontal", ""],
+    "Air pressure (Pa)": ["StationPressure","airpres","", "prestahs", ""],
+    "Vapor pressure (Pa)": ["","vappres","","","pva200h0"],
+    "Snow Depth (cm)": ["SnowDepth","","","","htoauths"],
     "Albedo" : ["Albedo","albedo","","bodenalbedo"],
     "Ground emissivity (%)" : ["","emissivity","","bodenemissivitaet"],
-    "Liquid precipitation depth (mm)": ["LiquidPrecipitationDepth","precip","","rre150h0"],
+    "Liquid precipitation depth (mm)": ["LiquidPrecipitationDepth","precip","","rre150h0","rre150h0"],
     "Liquid precipitation quantity (mm/h)": ["LiquidPrecipitationQuantity","","",""]
 }
 
@@ -52,6 +53,7 @@ VAR_NAME_EN_TO_FR = {
     "Liquid precipitation depth (mm)": "Hauteur de précipitations (mm)",
     "Liquid precipitation quantity (mm/h)": "Quantité de précipitations (mm/h)",
 }
+
 
 # --- Color maps pour la Heatmap ---
 # Mapping par variable (colonne interne) vers un colorscale Plotly
@@ -87,22 +89,6 @@ MANUAL_COLOR_MAP_OPTIONS = [
     "Inferno", "Plasma", "Magma",
     "Earth", "Greens", "Blues", "Purples",
 ]
-
-
-UNIT_CONVERSIONS = {
-    "EPW": {
-        "TotalSkyCover": 10.0,   # tenths → %
-        "OpaqueSkyCover": 10.0,  # tenths → %
-    },
-    "SIA 4028": {
-    },
-    "SIA 2028:2023": {
-        "Air pressure (Pa)": 100.0,         # hPa → Pa
-        "Albedo": 1/100.0,                  # % → fraction
-    },
-    "SIA 2028:2010":{
-    }
-}
 
 WEATHER_STATIONS = {
     "Aadorf / Tänikon (TAE)" : "TAE",
@@ -177,6 +163,7 @@ FREQ_MAP = {
 
 FUNC_MAP = {
     "Moyenne": "mean",
+    "Moyenne et enveloppe min/max": "mean_min_max",
     "Min": "min",
     "Max": "max",
     "Médiane": "median",
@@ -187,15 +174,75 @@ FUNC_MAP = {
     "Somme cumulée": "cumsum",
     # 'Somme cumulée' est un mot-clé traité par compute_aggregated_df
     # qui fera une agrégation par 'sum' puis un cumsum (par source).
-
 }
 
 
-COLOR_SEQUENCE = [
-    "#1f77b4",  # bleu
-    "#ff7f0e",  # orange
-    "#2ca02c",  # vert
-    "#d62728",  # rouge
-    "#9467bd",  # violet
-    "#8c564b",
+LINE_COLORS = [
+    "#163aa5",  # bleu
+    "#66c9fd",  # bleu clair
+    "#b2612a",  # orange
+    "#f0a052",  # orange clair
+    "#549c72",  # vert
+    "#9bd5a9",  # vert clair
+    "#9f59b7",  # violet
+    "#f1a3f7",  # violet clair
+    "#000000",  # noir
+    "#7F7F7F",  # noir clair (gris)
 ]
+
+LINE_COLORS = [
+    # Bleu
+    "#163aa5",  # bleu
+    "#66c9fd",  # bleu clair
+    "#b8e8ff",  # bleu pastel
+    # Orange
+    "#b2612a",  # orange
+    "#f0a052",  # orange clair
+    "#f8d1ae",  # orange pastel
+    # Vert
+    "#549c72",  # vert
+    "#9bd5a9",  # vert clair
+    "#d4efd9",  # vert pastel
+    # Violet
+    "#9f59b7",  # violet
+    "#f1a3f7",  # violet clair
+    "#f7d6fa",  # violet pastel
+    # Noir / Gris
+    "#000000",  # noir
+    "#7f7f7f",  # gris
+    "#d9d9d9",  # gris clair
+]
+
+
+
+
+LINE_STYLES = [
+    {"symbol": "━", "plotly": "solid"},
+    {"symbol": "╌╌", "plotly": "dash"},
+    {"symbol": "···", "plotly": "dot"},
+    {"symbol": "−·−", "plotly": "dashdot"},
+]
+
+
+FUNCTION_STYLES = {
+    "Moyenne": {
+        "dash": "solid",
+        "width": 2
+    },
+    "Min": {
+        "dash": "dot",
+        "width": 1
+    },
+    "Max": {
+        "dash": "dot",
+        "width": 1
+    },
+    "Quartile 25%": {
+        "dash": "dash",
+        "width": 1
+    },
+    "Quartile 75%": {
+        "dash": "dash",
+        "width": 1
+    }
+}
