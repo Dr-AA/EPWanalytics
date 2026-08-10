@@ -34,6 +34,13 @@ VARIABLE_MAP = {
     "Liquid precipitation quantity (mm/h)": ["LiquidPrecipitationQuantity","","",""]
 }
 
+SIMPLE_VARIABLE_OPTIONS ={
+"Dry bulb (°C)",
+"Relative humidity (%)",
+"Global horizontal radiation (Wh/m²)",
+"Liquid precipitation depth (mm)"
+}
+
 VAR_NAME_EN_TO_FR = {
     "Dry bulb (°C)": "Température de bulbe sec (°C)",
     "Wet bulb (°C)": "Température de bulbe humide (°C)",
@@ -160,6 +167,15 @@ FREQ_MAP = {
     "Mois": "ME",
     "Année" : "YE"
 }
+FREQ_LABELS = {
+    "Heure": {"singular": "heure","plural": "heures"},
+    "Jour": {"singular": "jour","plural": "jours"},
+    "Semaine": {"singular": "semaine","plural": "semaines"},
+    "Mois": {"singular": "mois","plural": "mois"},
+    "Année": {"singular": "année","plural": "années"}
+}
+
+
 
 FUNC_MAP = {
     "Moyenne": "mean",
@@ -175,6 +191,13 @@ FUNC_MAP = {
     # 'Somme cumulée' est un mot-clé traité par compute_aggregated_df
     # qui fera une agrégation par 'sum' puis un cumsum (par source).
 }
+
+SIMPLE_FUNC_OPTIONS = [  #Liste des options FUNC_MAP disponibles en mode simplifié
+    "Moyenne",
+    "Min",
+    "Max",
+    "Moyenne et enveloppe min/max"
+]
 
 
 LINE_COLORS = [
@@ -246,3 +269,30 @@ FUNCTION_STYLES = {
         "width": 1
     }
 }
+
+
+MODES = {
+    "simple": {
+        "show_date_interval" : False,
+        "var_options": ["Dry bulb (°C)","Relative humidity (%)","Global horizontal radiation (Wh/m²)","Liquid precipitation depth (mm)"],
+        "func_options": ["Moyenne","Min","Max","Moyenne et enveloppe min/max"],
+        "x_options": [
+            {'label': 'Date', 'value': 'date'},
+            {'label': 'Tri décroissant', 'value': 'desc'},
+        ],
+        "show_events": False,
+    },
+
+    "advanced": {
+        "show_date_interval" : True,
+        "var_options": list(VARIABLE_MAP.keys()),
+        "func_options": list(FUNC_MAP.keys()),
+        "x_options": [
+            {'label': 'Date', 'value': 'date'},
+            {'label': 'Tri décroissant', 'value': 'desc'},
+            {'label': 'Tri croissant', 'value': 'asc'},
+        ],
+        "show_events": True,
+    }
+}
+

@@ -178,21 +178,17 @@ def read_weather_file(path: str, label: str = None,
     #Determine data format and rename columns accordingly
     if file_ext == ".epw":
         data_format = "EPW"
-        print("Reading .epw file")
         df = df.rename(columns=EPW_COLUMN_RENAME)  # Colonnes sans noms -> noms de variables EPW
     elif list(df.columns) == SIA4028_EXPECTED_COLUMNS:
         data_format = "SIA 4028"
-        print("Reading .csv file with SIA 4028 column names.")
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
         df["Minute"] = 60
     elif list(df.columns) == SIA2028_2023_EXPECTED_COLUMNS:
         data_format = "SIA 2028:2023"
-        print("Reading .csv file with SIA 2028:2023 column names.")
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
         df["Minute"] = 60
     elif list(df.columns) == SIA2028_2010_EXPECTED_COLUMNS:
         data_format = "SIA 2028:2010"
-        print("Reading .csv file with SIA 2028:2010 column names.")
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
         df["Minute"] = 60
     elif list(df.columns) == METEOSUISSE_EXPECTED_COLUMNS:
@@ -207,7 +203,7 @@ def read_weather_file(path: str, label: str = None,
     else:
         print("[WARN] Reading .csv file with unknown column names - skipping this file.")
         return
-    print(f"Reading file with data format : {data_format}")
+    print(f"-- Reading file with data format : {data_format}--")
 
     #Convert to numeric
     for c in df.columns:
@@ -220,6 +216,7 @@ def read_weather_file(path: str, label: str = None,
     if leap_policy != "keep":
         is_feb29 = (df["Month"] == 2) & (df["Day"] == 29)
         if leap_policy == "drop":
+            print(f"Applying drop policy (is_feb29 : {is_feb29.sum()})")
             df = df.loc[~is_feb29].copy()
         elif leap_policy == "merge_to_28":
             df.loc[is_feb29, "Day"] = 28
@@ -253,7 +250,6 @@ def read_weather_file(path: str, label: str = None,
     for var, nan_val in EPW_NAN_VALUE_MAP.items():
         if var in df.columns:
             df[var] = df[var].mask(df[var] >= nan_val)
-
     return df
 
 def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv"),

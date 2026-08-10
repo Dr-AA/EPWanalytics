@@ -270,6 +270,8 @@ def detect_events(
 
     if threshold_min is None and threshold_max is None:
         return pd.DataFrame()
+    if duration_min is None or duration_min < 1:
+        return pd.DataFrame()
 
     agg = compute_aggregated_df(df, period_label, func_label, variable)
 

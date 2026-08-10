@@ -14,8 +14,8 @@ from generic_helpers import hex_to_rgba, pad_y_axis_range, mmdd_to_ref_dates, pa
 
 from weather_graph.read_weather_file import read_weather_file, REFERENCE_YEAR
 from weather_graph.data_processing import build_master_df, compute_aggregated_df, filter_by_period, build_heatmap_matrix, build_windrose_figure, detect_events
-from weather_graph.config_weather_graph import VAR_NAME_EN_TO_FR, COLOR_MAP_BY_VAR, MANUAL_COLOR_MAP_OPTIONS, LINE_COLORS, LINE_STYLES
 from weather_graph.figure_helpers import add_events_to_figure
+import weather_graph.config_weather_graph as cfg
 
 def callbacks_weather_graph(app):
 
@@ -108,7 +108,7 @@ def callbacks_weather_graph(app):
 
         display_store[filepath] = {
             "visible": True,
-            "color": LINE_COLORS[len(display_store) % len(LINE_COLORS)],
+            "color": cfg.LINE_COLORS[len(display_store) % len(cfg.LINE_COLORS)],
             "line_style": 0,
         }
 
@@ -159,7 +159,7 @@ def callbacks_weather_graph(app):
 
                                 # -- icône type de ligne
                                 html.Div(
-                                    LINE_STYLES[payload["line_style"]]["symbol"],
+                                    cfg.LINE_STYLES[payload["line_style"]]["symbol"],
                                     id={"type": "source-line-style", "path": path},
                                     n_clicks=0,
                                     style={
@@ -258,7 +258,7 @@ def callbacks_weather_graph(app):
 
         # 🔒 Pas un vrai clic utilisateur
         if clicks == 0:
-            print("WARN : clicks = 0")
+            #print("WARN : clicks = 0")
             raise PreventUpdate
 
         # ✅ EVEN clicks → SOLO mode
@@ -291,11 +291,11 @@ def callbacks_weather_graph(app):
             raise PreventUpdate
         current_color = display_store[path]["color"]
         try:
-            current_idx = LINE_COLORS.index(current_color)
+            current_idx = cfg.LINE_COLORS.index(current_color)
         except ValueError:
             current_idx = 0
-        next_idx = (current_idx + 1) % len(LINE_COLORS)
-        display_store[path]["color"] = LINE_COLORS[next_idx]
+        next_idx = (current_idx + 1) % len(cfg.LINE_COLORS)
+        display_store[path]["color"] = cfg.LINE_COLORS[next_idx]
 
         return display_store
 
@@ -315,7 +315,7 @@ def callbacks_weather_graph(app):
         idx = list(display_store.keys()).index(path)
         if n_clicks_list[idx] == 0:
             raise PreventUpdate
-        display_store[path]["line_style"] = (display_store[path]["line_style"] + 1) % len(LINE_STYLES)
+        display_store[path]["line_style"] = (display_store[path]["line_style"] + 1) % len(cfg.LINE_STYLES)
         return display_store
 
 
@@ -345,7 +345,7 @@ def callbacks_weather_graph(app):
 
         index = idx[0]
         if n_clicks_list[index] == 0:
-            print("WARN - n_clicks = 0")
+            #print("WARN - n_clicks = 0")
             raise PreventUpdate
 
         # ✅ vrai clic utilisateur
@@ -366,8 +366,8 @@ def callbacks_weather_graph(app):
         [
             Input('epw-graph', 'relayoutData'),
             # Changement de contexte -> on repart à l'état par défaut
-            Input('common-start', 'value'),
-            Input('common-end', 'value'),
+            Input('date-start', 'value'),
+            Input('date-end', 'value'),
             Input('epw-var', 'value'),
             Input('epw-period', 'value'),
             Input('epw-func', 'value'),
@@ -457,8 +457,8 @@ def callbacks_weather_graph(app):
         Output('epw-graph', 'figure'),
         [
             Input('epw-tabs', 'value'),
-            Input('common-start', 'value'),
-            Input('common-end', 'value'),
+            Input('date-start', 'value'),
+            Input('date-end', 'value'),
             Input('epw-var', 'value'),
             Input('epw-period', 'value'),
             Input('epw-func', 'value'),
@@ -479,7 +479,7 @@ def callbacks_weather_graph(app):
                              y_mode, ymin, ymax, plot_df_json, display_store,
                              event_enabled, events_json,
                              axes_store,):
-
+        print("-- Call to update_weather_graph --")
         if active_tab != 'tab-plot':
             raise PreventUpdate
 
@@ -565,7 +565,7 @@ def callbacks_weather_graph(app):
                                 mode=mode_line,
                                 line=dict(
                                     color=payload["color"],
-                                    dash=LINE_STYLES[payload["line_style"]]["plotly"],
+                                    dash=cfg.LINE_STYLES[payload["line_style"]]["plotly"],
                                     width=2,
                                 ),
                                 hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
@@ -580,7 +580,7 @@ def callbacks_weather_graph(app):
                                 mode=mode_line,
                                 line=dict(
                                     color=payload["color"],
-                                    dash=LINE_STYLES[payload["line_style"]]["plotly"],
+                                    dash=cfg.LINE_STYLES[payload["line_style"]]["plotly"],
                                     width=2,
                                 ),
                                 hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
@@ -632,9 +632,9 @@ def callbacks_weather_graph(app):
 
         fig.update_layout(
             template='plotly_white',
-            title=f"{VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}" + ("" if x_mode == 'date' else f" — {subtitle}") if func_label != "Somme cumulée" else f"{VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}",
+            title=f"{cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}" + ("" if x_mode == 'date' else f" — {subtitle}") if func_label != "Somme cumulée" else f"{cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}",
             xaxis_title=x_title,
-            yaxis_title=VAR_NAME_EN_TO_FR.get(var_col, var_col),
+            yaxis_title=cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col),
             hovermode='x unified',
             legend=dict(
                 x=0.99, y=0.99, xanchor='right', yanchor='top',
@@ -709,10 +709,10 @@ def callbacks_weather_graph(app):
         Input("event-threshold-min", "value"),
         Input("event-threshold-max", "value"),
         Input("event-duration-min", "value"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def compute_event_data(loaded_files, variable, func_label, period_label, threshold_min, threshold_max, duration_min):
-        print("Call to compute_event_data")
+        print("-- Call to compute_event_data --")
         df_master = build_master_df(loaded_files)
 
         events_df = detect_events(
@@ -726,6 +726,37 @@ def callbacks_weather_graph(app):
         )
 
         return events_df.to_json(date_format="iso")
+
+    @app.callback(
+        Output("event-period-text", "children"),
+        Input("event-period", "value"),
+        Input("event-duration-min", "value"),
+    )
+    def update_event_period_text(period_label, duration):
+        duration = duration or 1
+        if duration == 1:
+            return " " + cfg.FREQ_LABELS[period_label]["singular"] + "."
+        else:
+            return " " + cfg.FREQ_LABELS[period_label]["plural"] + "."
+
+    @app.callback(
+        Output("event-result-text", "children"),
+        Input("event-data-store","data"),
+        prevent_initial_call = True
+    )
+    def update_event_result_text(events_json):
+        if events_json :
+            events_df = pd.read_json(StringIO(events_json))
+            nb_events = len(events_df)
+            if nb_events == 0 :
+                return "Aucun évènement trouvé."
+            elif nb_events <= 30 :
+                return f"Nombre d'évènements trouvés : {nb_events}"
+            elif nb_events > 30 :
+                return f"Attention, les évènements détectés ne sont pas affichés car leur nombre ({nb_events}) dépasse le nombre maximal (30). Veuillez modifier les critères ou réduire le nombre de datasets."
+
+
+
 
 
 
@@ -754,8 +785,8 @@ def callbacks_weather_graph(app):
         Output('epw-windrose', 'figure'),
         [
             Input('epw-tabs', 'value'),
-            Input('common-start', 'value'),
-            Input('common-end', 'value'),
+            Input('date-start', 'value'),
+            Input('date-end', 'value'),
             Input('wr-nbins', 'value'),
             Input('wr-norm', 'value'),
             Input("loaded-files-store", "data"),
@@ -876,8 +907,8 @@ def callbacks_weather_graph(app):
         Output('heat-map', 'figure'),
         [
             Input('epw-tabs', 'value'),             # ne dessiner que si l'onglet Heatmap est actif
-            Input('common-start', 'value'),
-            Input('common-end', 'value'),
+            Input('date-start', 'value'),
+            Input('date-end', 'value'),
             Input('heatmap-var', 'value'),          # variable
             Input('heatmap-colormap', 'value'),     # 'Auto' ou 'Manuel'
             Input('heatmap-colormap-choice', 'value'),  # palette manuelle
@@ -941,10 +972,10 @@ def callbacks_weather_graph(app):
         )
 
         # Colorscale
-        if cm_mode == 'Manuel' and manual_choice in MANUAL_COLOR_MAP_OPTIONS:
+        if cm_mode == 'Manuel' and manual_choice in cfg.MANUAL_COLOR_MAP_OPTIONS:
             colorscale = manual_choice
         else:
-            colorscale = COLOR_MAP_BY_VAR.get(var_col, 'Viridis')
+            colorscale = cfg.COLOR_MAP_BY_VAR.get(var_col, 'Viridis')
 
         # zmin/zmax communs pour comparabilité (sur toutes les matrices valides)
         z_global_min = None
@@ -987,13 +1018,11 @@ def callbacks_weather_graph(app):
 
                 fig.add_trace(
                     go.Heatmap(
-                        z=z,
-                        x=x,
-                        y=y,
+                        z=z, x=x, y=y,
                         colorscale=colorscale,
                         zmin=zmin_final, zmax=zmax_final,
                         colorbar=dict(
-                            title=VAR_NAME_EN_TO_FR.get(var_col, var_col),
+                            title=cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col),
                             thickness=12,
                             len=0.8
                         ) if i == 0 else None,   # colorbar uniquement sur le 1er subplot
@@ -1015,7 +1044,56 @@ def callbacks_weather_graph(app):
         # Layout global
         fig.update_layout(
             template='plotly_white',
-            title="Heatmap — " + VAR_NAME_EN_TO_FR.get(var_col, var_col),
+            title="Heatmap — " + cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col),
             margin=dict(l=60, r=20, t=60, b=60),
         )
         return fig
+
+    #--------------------------------------------------------
+    #--------------------- Mode simplifié -------------------
+    #--------------------------------------------------------
+
+    @app.callback(
+        Output("date-interval-container","style"),
+        Output("epw-var", "options"),
+        Output("epw-func", "options"),
+        Output("x-mode", "options"),
+        Output("advanced-events-container","style"),
+        Output("event-enabled","value"),
+        Input("advanced-mode", "value")
+    )
+    def switch_mode(mode_selection):
+        advanced = "advanced" in (mode_selection or [])
+
+        selected_mode = (
+            cfg.MODES["advanced"] if advanced else cfg.MODES["simple"]
+        )
+
+        events_style = (
+            {} if selected_mode["show_date_interval"] else {"display": "none"}
+        )
+
+        var_options = [
+            {"label": var,"value": var} for var in selected_mode["var_options"]
+        ]
+
+        func_options = [
+            {"label": func,"value": func} for func in selected_mode["func_options"]
+        ]
+
+        x_options = selected_mode["x_options"]
+
+        events_style = (
+            {} if selected_mode["show_events"] else {"display": "none"}
+        )
+
+        event_enabled = "disabled",
+
+        return [
+            events_style,
+            var_options,
+            func_options,
+            x_options,
+            events_style,
+            event_enabled
+        ]
