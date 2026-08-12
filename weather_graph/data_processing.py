@@ -60,10 +60,10 @@ def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: s
 
     return aggregated
 
-def filter_by_period(df: pd.DataFrame, start_month: int, start_day: int,
-                     end_month: int, end_day: int) -> pd.DataFrame:
+def filter_by_period(df: pd.DataFrame, start_day: int, start_month: int,
+                     end_day: int, end_month: int) -> pd.DataFrame:
     """
-    Filtre [df] entre MM-DD -> MM-DD, en utilisant directement datetime.dt.dayofyear.
+    Filtre [df] entre DD-MM -> DD-MM, en utilisant directement datetime.dt.dayofyear.
     S'il n'y a aucun datetime valide (tout NaT), la fonction renvoie df tel quel (pas de filtre).
     """
     out = df.copy()
@@ -129,11 +129,13 @@ def build_windrose_figure(df_src, start_label, end_label, n_dir_bins, normalize)
 
     # 1) Période
     try:
-        sm, sd = map(int, start_label.split('-'))
-        em, ed = map(int, end_label.split('-'))
+        sd, sm = map(int, start_label.split('.'))
+        ed, em = map(int, end_label.split('.'))
     except Exception:
+        print("EXCEPT DATE")
         sm, sd, em, ed = 1, 1, 12, 31
-    sub = filter_by_period(df_src, sm, sd, em, ed)
+    print(f"Start : {sd}.{sm} | End : {ed}.{em}")
+    sub = filter_by_period(df_src, sd, sm, ed, em)
 
     # 2) Colonnes vent: m/s → km/h + nettoyage (sentinelles)
     dfw = sub[['Wind direction (°)', 'Wind speed mean (m/s)']].copy()

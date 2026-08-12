@@ -34,7 +34,7 @@ def pad_y_axis_range(y0: float, y1: float, min_pad: float = 1e-6):
 #--------------------- Handling dates--------------------
 #--------------------------------------------------------
 
-def mmdd_to_ref_dates(start_label: str, end_label: str, year: int):
+def ddmm_to_ref_dates(start_label: str, end_label: str, year: int):
     """'DD.MM' -> (Timestamp start, Timestamp end) dans l'année de référence.
        Si parsing échoue, défaut 01.01 -> 31.12. Si end < start, on inverse."""
     def _parse(label, default):
@@ -50,7 +50,7 @@ def mmdd_to_ref_dates(start_label: str, end_label: str, year: int):
     return s, e
 
 
-def parse_mmdd(label: str, default=(1, 1)):
+def parse_ddmm(label: str, default=(1, 1)):
     """'DD.MM' -> (day, month) avec fallback."""
     try:
         d, m = map(int, (label or '').split('.'))

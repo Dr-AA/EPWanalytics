@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 
-from generic_helpers import hex_to_rgba, pad_y_axis_range, mmdd_to_ref_dates, parse_mmdd, extract_axis_ranges_or_auto, extract_range_from_relayout
+from generic_helpers import hex_to_rgba, pad_y_axis_range, ddmm_to_ref_dates, parse_ddmm, extract_axis_ranges_or_auto, extract_range_from_relayout
 
 from weather_graph.read_weather_file import read_weather_file, REFERENCE_YEAR
 from weather_graph.data_processing import build_master_df, compute_aggregated_df, filter_by_period, build_heatmap_matrix, build_windrose_figure, detect_events
@@ -72,6 +72,41 @@ def callbacks_weather_graph(app):
 
         return options
 
+    @app.callback(
+        Output("load-file-btn", "disabled"),
+        Output("load-file-btn", "style"),
+        Input("station-dropdown", "value"),
+        Input("dataset-dropdown", "value"),
+        Input("loaded-files-store", "data"),
+    )
+    def update_load_button(station, dataset, loaded_files):
+        loaded_files = loaded_files or {}
+        enabled = (
+                station is not None
+                and dataset is not None
+                and dataset not in loaded_files
+        )
+
+        if enabled:
+            return False, {
+                "marginTop": "6px",
+                "backgroundColor": "#1f388b",
+                "color": "white",
+                "border": "1px solid #1f388b",
+                "borderRadius": "4px",
+                "padding": "6px 12px",
+                "cursor": "pointer",
+            }
+        else:
+            return True, {
+                "marginTop": "6px",
+                "backgroundColor": "#f9f9f9",
+                "color": "#6c757d",
+                "border": "1px solid #ced4da",
+                "borderRadius": "4px",
+                "padding": "6px 12px",
+                "cursor": "not-allowed",
+            }
 
     @app.callback(
         Output("loaded-files-store", "data", allow_duplicate=True),
@@ -122,7 +157,7 @@ def callbacks_weather_graph(app):
     )
     def render_loaded_sources(loaded_store, display_store):
         if not loaded_store:
-            return html.Div("Aucun fichier chargé.", style={"fontStyle": "italic"})
+            return html.Div("Aucun fichier chargé.", style = {"color":"#6c757d"}),
 
         rows = []
 
@@ -603,6 +638,9 @@ def callbacks_weather_graph(app):
             for src, df_src in plot_df.groupby("source"):
                 # Nettoyage NA, tri stable pour reproductibilité
                 tmp = df_src[['datetime', var_col]].dropna(subset=[var_col]).copy()
+                sd, sm = parse_ddmm(start_label, (1, 1))
+                ed, em = parse_ddmm(end_label, (31,12))
+                tmp = filter_by_period(tmp,sd,sm,ed,em)
                 tmp = tmp.sort_values(by=var_col, ascending=isAscending, kind='mergesort')  # stable
                 tmp['rank'] = range(1, len(tmp) + 1)  # 1..n pour cette source
 
@@ -655,7 +693,7 @@ def callbacks_weather_graph(app):
                 if period_label == "Année":
                     fig.update_xaxes(type="category")
                 else:
-                    x0, x1 = mmdd_to_ref_dates(start_label, end_label, REFERENCE_YEAR)
+                    x0, x1 = ddmm_to_ref_dates(start_label, end_label, REFERENCE_YEAR)
                     fig.update_xaxes(range=[x0, x1])
         else:
             # En mode tri, X = 1..n => laisser autorange et ticks linéaires
@@ -934,15 +972,15 @@ def callbacks_weather_graph(app):
             return go.Figure().update_layout(template='plotly_white', title="Aucun fichier sélectionné")
 
         # Parse période MM-JJ -> ints
-        sd, sm = parse_mmdd(start_label, (1, 1))
-        ed, em = parse_mmdd(end_label, (12, 31))
+        sd, sm = parse_ddmm(start_label, (1, 1))
+        ed, em = parse_ddmm(end_label, (31, 12))
 
         # Construire les matrices pour chaque source
         mats = []
         titles = []
         for src in sources:
             df_src = df[df['source_label'] == src]
-            df_filt = filter_by_period(df_src, sm, sd, em, ed)
+            df_filt = filter_by_period(df_src, sd, sm, ed, em)
             mat = build_heatmap_matrix(df_filt, var_col)
             mats.append(mat)
             titles.append(src)
@@ -1058,8 +1096,12 @@ def callbacks_weather_graph(app):
         Output("epw-var", "options"),
         Output("epw-func", "options"),
         Output("x-mode", "options"),
-        Output("advanced-events-container","style"),
+        Output("y-axis-container", "style"),
+        Output("date-start", "value"),
+        Output("date-end", "value"),
+        Output("events-container","style"),
         Output("event-enabled","value"),
+        Output("wind-rose-normalisation-container","style"),
         Input("advanced-mode", "value")
     )
     def switch_mode(mode_selection):
@@ -1074,7 +1116,7 @@ def callbacks_weather_graph(app):
         )
 
         var_options = [
-            {"label": var,"value": var} for var in selected_mode["var_options"]
+            {"label": cfg.VAR_NAME_EN_TO_FR[var],"value": var} for var in selected_mode["var_options"]
         ]
 
         func_options = [
@@ -1083,17 +1125,34 @@ def callbacks_weather_graph(app):
 
         x_options = selected_mode["x_options"]
 
+        y_axis_container_style = (
+            {} if selected_mode["show_y_axis_scaling_options"] else {"display": "none"}
+        )
+
         events_style = (
             {} if selected_mode["show_events"] else {"display": "none"}
         )
 
-        event_enabled = "disabled",
+
+
+        windrose_normalisation_container_style = (
+            {} if selected_mode["show_windrose_normalisation"] else {"display": "none"}
+        )
+
+        #Remettre aux valeurs par défaut les variables qui ne sont plus accessibles
+        date_start ='01.01'
+        date_end = '31.12'
+        event_enabled = []
 
         return [
             events_style,
             var_options,
             func_options,
             x_options,
+            y_axis_container_style,
+            date_start,
+            date_end,
             events_style,
-            event_enabled
+            event_enabled,
+            windrose_normalisation_container_style
         ]

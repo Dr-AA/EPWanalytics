@@ -1,5 +1,6 @@
-
 # config_weather_graph.py
+from dash import html
+
 
 DATA_ROOT = "data"
 
@@ -46,14 +47,18 @@ VAR_NAME_EN_TO_FR = {
     "Wet bulb (°C)": "Température de bulbe humide (°C)",
     "Dew point (°C)": "Température du point de rosée (°C)",
     "Relative humidity (%)": "Humidité relative (%)",
+    "Mixing ratio (g/kg)" : "Mixing ratio (g/kg)" ,
+    "Enthalpy (kJ/kg)" : "Enthalpie (kJ/kg)",
     "Wind speed mean (m/s)": "Vitesse moyenne du vent (m/s)",
     "Wind speed max (m/s)": "Vitesse max du vent (raffales) (m/s)",
     "Wind direction (°)": "Direction du vent (°)",
-    "Total sky cover (tenths)": "Couverture nuageuse (dixièmes)",
+    "Total sky cover (%)": "Couverture nuageuse (%)",
     "Global horizontal radiation (Wh/m²)": "Rayonnement global horizontal (Wh/m²)",
     "Direct normal radiation (Wh/m²)": "Rayonnement direct normal (Wh/m²)",
     "Diffuse horizontal radiation (Wh/m²)": "Rayonnement diffus horizontal (Wh/m²)",
+    "Horizontal infrared rad. intensity (Wh/m²)" : "Horizontal infrared rad. intensity (Wh/m²)",
     "Air pressure (Pa)": "Pression atmosphérique (Pa)",
+    "Vapor pressure (Pa)":"Pression de vapeur d'eau (Pa)",
     "Snow Depth (cm)": "Hauteur de neige (cm)",
     "Albedo":"Albedo",
     "Ground emissivity (%)" : "Emissivité du sol (%)",
@@ -88,14 +93,6 @@ COLOR_MAP_BY_VAR = {
     "Liquid precipitation depth (mm)": "Blues",          # Pluie → bleu
     "Liquid precipitation quantity (mm/h)": "Blues"       # Intensité de pluie
 }
-
-# Options proposées en mode Manuel (liste de colorscales Plotly)
-MANUAL_COLOR_MAP_OPTIONS = [
-    "Viridis", "Cividis", "Turbo",
-    "RdBu_r", "YlGnBu", "YlOrBr",
-    "Inferno", "Plasma", "Magma",
-    "Earth", "Greens", "Blues", "Purples",
-]
 
 WEATHER_STATIONS = {
     "Aadorf / Tänikon (TAE)" : "TAE",
@@ -175,8 +172,6 @@ FREQ_LABELS = {
     "Année": {"singular": "année","plural": "années"}
 }
 
-
-
 FUNC_MAP = {
     "Moyenne": "mean",
     "Moyenne et enveloppe min/max": "mean_min_max",
@@ -192,13 +187,39 @@ FUNC_MAP = {
     # qui fera une agrégation par 'sum' puis un cumsum (par source).
 }
 
-SIMPLE_FUNC_OPTIONS = [  #Liste des options FUNC_MAP disponibles en mode simplifié
-    "Moyenne",
-    "Min",
-    "Max",
-    "Moyenne et enveloppe min/max"
-]
 
+#--------------------------
+#---Affichage--------------
+#--------------------------
+
+MODES = {
+    "simple": {
+        "show_date_interval" : False,
+        "var_options": ["Dry bulb (°C)","Relative humidity (%)","Global horizontal radiation (Wh/m²)","Liquid precipitation depth (mm)"],
+        "func_options": ["Moyenne","Min","Max","Moyenne et enveloppe min/max"],
+        "x_options": [
+            {'label': 'Date', 'value': 'date'},
+            {'label': 'Tri décroissant', 'value': 'desc'},
+        ],
+        "show_y_axis_scaling_options" : False,
+        "show_events": False,
+        "show_windrose_normalisation": False,
+    },
+
+    "advanced": {
+        "show_date_interval" : True,
+        "var_options": list(VARIABLE_MAP.keys()),
+        "func_options": list(FUNC_MAP.keys()),
+        "x_options": [
+            {'label': 'Date', 'value': 'date'},
+            {'label': 'Tri décroissant', 'value': 'desc'},
+            {'label': 'Tri croissant', 'value': 'asc'},
+        ],
+        "show_y_axis_scaling_options" : True,
+        "show_events": True,
+        "show_windrose_normalisation": True,
+    }
+}
 
 LINE_COLORS = [
     "#163aa5",  # bleu
@@ -236,9 +257,6 @@ LINE_COLORS = [
     "#d9d9d9",  # gris clair
 ]
 
-
-
-
 LINE_STYLES = [
     {"symbol": "━", "plotly": "solid"},
     {"symbol": "╌╌", "plotly": "dash"},
@@ -246,53 +264,28 @@ LINE_STYLES = [
     {"symbol": "−·−", "plotly": "dashdot"},
 ]
 
+# Heat Map : Options proposées en mode Manuel (liste de colorscales Plotly)
+MANUAL_COLOR_MAP_OPTIONS = [
+    "Viridis", "Cividis", "Turbo",
+    "RdBu_r", "YlGnBu", "YlOrBr",
+    "Inferno", "Plasma", "Magma",
+    "Earth", "Greens", "Blues", "Purples",
+]
 
-FUNCTION_STYLES = {
-    "Moyenne": {
-        "dash": "solid",
-        "width": 2
-    },
-    "Min": {
-        "dash": "dot",
-        "width": 1
-    },
-    "Max": {
-        "dash": "dot",
-        "width": 1
-    },
-    "Quartile 25%": {
-        "dash": "dash",
-        "width": 1
-    },
-    "Quartile 75%": {
-        "dash": "dash",
-        "width": 1
-    }
-}
+TOOLTIPS_ENABLED = True
 
-
-MODES = {
-    "simple": {
-        "show_date_interval" : False,
-        "var_options": ["Dry bulb (°C)","Relative humidity (%)","Global horizontal radiation (Wh/m²)","Liquid precipitation depth (mm)"],
-        "func_options": ["Moyenne","Min","Max","Moyenne et enveloppe min/max"],
-        "x_options": [
-            {'label': 'Date', 'value': 'date'},
-            {'label': 'Tri décroissant', 'value': 'desc'},
-        ],
-        "show_events": False,
-    },
-
-    "advanced": {
-        "show_date_interval" : True,
-        "var_options": list(VARIABLE_MAP.keys()),
-        "func_options": list(FUNC_MAP.keys()),
-        "x_options": [
-            {'label': 'Date', 'value': 'date'},
-            {'label': 'Tri décroissant', 'value': 'desc'},
-            {'label': 'Tri croissant', 'value': 'asc'},
-        ],
-        "show_events": True,
-    }
+TOOLTIPS = {
+"advanced-mode" : "Le mode avancé permet d'accéder à des options supplémentaires",
+"station-dropdown" : "Sélection de la station météo",
+"dataset-dropdown" : [
+    "RCP : Scenarios d'émissions de gaz à effet de serre. RCP 2.6 est très optimiste; RCP 8.5 correspond au 'business as usual'",
+    html.Br(),
+    "DRY : scenario représentatif de la période (Design Reference Year)",
+    html.Br(),
+    "1-in-10 : scenario représentatif d'un été chaud survenant environ 1 année sur 10",
+    ],
+"date-interval-container" : "Ce filtre s'applique au graphe (également avec l'axe X en mode tri), aux roses des vents et heatmaps",
+"Agregation-container" : "Les données brutes sont au pas de temps horaire. La combinaison d'un pas de temps et d'une fonction permet d'afficher, par exemple, des moyennes mensuelles ou des maxima journaliers.",
+"x-mode" : "Le mode Tri permet de classer les valeurs pour rapidement voir leur distribution.",
 }
 

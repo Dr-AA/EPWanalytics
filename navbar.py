@@ -6,7 +6,7 @@ from dash import html
 def create_navbar():
     navbar = html.Div([
         dbc.Row([
-            dbc.Col(html.Img(src='assets/logo.jpg', alt='logo', width='150px'), width=2),
+            dbc.Col(html.Img(src='assets/Logo-Bleu-V2.png', alt='logo', width='150px'), width=2),
             dbc.Col(
                 dbc.NavbarSimple(
                     children=[
