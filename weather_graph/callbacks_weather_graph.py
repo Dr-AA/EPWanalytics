@@ -1,5 +1,5 @@
 # callbacks_weather_graph.py
-from dash import html, callback_context
+from dash import html, callback_context, no_update
 from dash.exceptions import PreventUpdate
 from dash.dependencies import Input, Output, State, ALL
 from app import app
@@ -787,11 +787,33 @@ def callbacks_weather_graph(app):
             events_df = pd.read_json(StringIO(events_json))
             nb_events = len(events_df)
             if nb_events == 0 :
-                return "Aucun évènement trouvé."
+                return "> Aucun évènement trouvé."
             elif nb_events <= 30 :
-                return f"Nombre d'évènements trouvés : {nb_events}"
+                return f"> Nombre d'évènements trouvés : {nb_events}"
             elif nb_events > 30 :
-                return f"Attention, les évènements détectés ne sont pas affichés car leur nombre ({nb_events}) dépasse le nombre maximal (30). Veuillez modifier les critères ou réduire le nombre de datasets."
+                return f"> Attention, les évènements détectés ne sont pas affichés car leur nombre ({nb_events}) dépasse le nombre maximal (30). Veuillez modifier les critères ou réduire le nombre de datasets."
+
+    @app.callback(
+        Output("event-warning-text","style"),
+        Output("event-options-container","style"),
+        Output("event-enabled", "value", allow_duplicate=True),
+        Input("loaded-files-store", "data"),
+        prevent_initial_call = True,
+    )
+    def hide_event_options_if_multi_files(loaded_files):
+        print("-- Call to hide_event_options_if_multi_files --")
+        if not loaded_files or len(loaded_files) <= 1 :
+            return (
+                {"display": "none"},
+                {},
+                no_update
+            )
+        else :
+            return (
+                {},
+                {"display": "none"},
+                []
+            )
 
 
 
@@ -1102,7 +1124,8 @@ def callbacks_weather_graph(app):
         Output("events-container","style"),
         Output("event-enabled","value"),
         Output("wind-rose-normalisation-container","style"),
-        Input("advanced-mode", "value")
+        Output("wr-norm","value"),
+        Input("advanced-mode", "value"),
     )
     def switch_mode(mode_selection):
         advanced = "advanced" in (mode_selection or [])
@@ -1143,6 +1166,7 @@ def callbacks_weather_graph(app):
         date_start ='01.01'
         date_end = '31.12'
         event_enabled = []
+        windrose_normalisation = "heures"
 
         return [
             events_style,
@@ -1154,5 +1178,6 @@ def callbacks_weather_graph(app):
             date_end,
             events_style,
             event_enabled,
-            windrose_normalisation_container_style
+            windrose_normalisation_container_style,
+            windrose_normalisation
         ]

@@ -4,7 +4,6 @@ from dash.dependencies import Input, Output
 from app import app
 
 from navbar import create_navbar
-from home import create_page_home
 from weather_graph.page_weather_graph import create_page_weather_graph
 from weather_graph.callbacks_weather_graph import callbacks_weather_graph
 
@@ -24,11 +23,8 @@ app.layout = html.Div([
 @app.callback(Output('page-content', 'children'),
               [Input('url', 'pathname')])
 def display_page(pathname):
-    if pathname == '/epw':
-        return create_page_weather_graph()
-    else:
-        # page d’accueil par défaut
-        return create_page_home()
+    return create_page_weather_graph()
+
 
 callbacks_weather_graph(app)
 

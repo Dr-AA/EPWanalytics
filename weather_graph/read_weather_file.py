@@ -111,10 +111,11 @@ SIA4028_EXPECTED_COLUMNS = [
 ]
 
 METEOSUISSE_EXPECTED_COLUMNS = [
-    "station_abbr","reference_timestamp","tre200h0","tre200hn","tre200hx","tre005h0","tre005hn","ure200h0","pva200h0","tde200h0",
-    "prestah0","pp0qffh0","pp0qnhh0","ppz700h0","ppz850h0","fkl010h1","dkl010h0","fkl010h0","fu3010h0","fu3010h1","fkl010h3",
-    "fu3010h3","wcc006h0","fve010h0","rre150h0","htoauths","gre000h0","oli000h0","olo000h0","osr000h0","ods000h0","sre000h0",
-    "erefaoh0","tso005hs","tso010hs","tso020hs"
+    "station_abbr", "reference_timestamp", "tre200h0", "tre200hn", "tre200hx", "tre005h0", "tre005hn", "ure200h0",
+    "pva200h0", "tde200h0", "prestah0", "pp0qffh0", "pp0qnhh0", "ppz700h0", "ppz850h0", "fkl010h1", "dkl010h0",
+    "fkl010h0", "fu3010h0", "fu3010h1", "fkl010h3", "fu3010h3", "wcc006h0", "fve010h0", "rre150h0", "htoauths",
+    "gre000h0", "oli000h0", "olo000h0", "osr000h0", "ods000h0", "sre000h0", "erefaoh0", "tso005hs", "tso010hs",
+    "tso020hs"
 ]
 
 SIA_TIME_COLUMN_RENAME = {
@@ -170,7 +171,10 @@ def read_weather_file(path: str, label: str = None,
     if file_ext == ".epw":
         df = pd.read_csv(path, skiprows=8, header=None, low_memory=False)
     elif file_ext == ".csv":
-        df = pd.read_csv(path, skiprows=0, low_memory=False)
+        with open(path, "r", encoding="utf-8") as f:
+            first_line = f.readline()
+        sep = ";" if first_line.count(";") > first_line.count(",") else ","
+        df = pd.read_csv(path, sep=sep, skiprows=0, low_memory=False)
     else:
         print("[WARN] Error reading weather file : the file format is unknown.")
         return
@@ -202,6 +206,9 @@ def read_weather_file(path: str, label: str = None,
         df["Minute"] = 60
     else:
         print("[WARN] Reading .csv file with unknown column names - skipping this file.")
+        col_names = ";".join(df.columns)
+        print(f"Nombre de colonnes : {len(df.columns)}")
+        print(col_names)
         return
     print(f"-- Reading file with data format : {data_format}--")
 

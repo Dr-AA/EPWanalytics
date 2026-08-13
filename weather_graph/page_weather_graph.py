@@ -33,13 +33,15 @@ def list_available_stations():
             available.append({"label": long_name, "value": code})
     return available
 
-def load_tooltips():
+def load_tooltips(where):
     if not cfg.TOOLTIPS_ENABLED:
         return []
 
+    these_tooltips = cfg.TOOLTIPS[where]
+
     return [
         dbc.Tooltip(text, target=target, style={"maxWidth": "500px", "textAlign": "left",})
-        for target, text in cfg.TOOLTIPS.items()
+        for target, text in these_tooltips.items()
     ]
 
 def create_page_weather_graph():
@@ -89,7 +91,7 @@ def create_page_weather_graph():
             html.Button("Charger ce fichier", id="load-file-btn", disabled=True, style={"marginTop": "6px","backgroundColor": "#f9f9f9","color": "white","border": "1px solid #0d6efd","borderRadius": "4px","padding": "6px 12px","cursor": "pointer"}),
 
             #4 Liste des fichiers chargés
-            html.Label("Données chargées", style={'fontWeight': 'bold', "display": "block", "marginTop": "10px"}),
+            html.Label("Données à comparer", style={'fontWeight': 'bold', "display": "block", "marginTop": "10px"}),
 
             html.Div(
                 id="loaded-sources-container",
@@ -232,73 +234,82 @@ def create_page_weather_graph():
                             #--- Evènements ---
                             html.Div(
                                 [
-
-                                    html.Label("Evènements", style={'fontWeight': 'bold','marginTop': '10px'}),
-                                    dcc.Checklist(
-                                        id="event-enabled", value=[], style={"marginTop": "5px"},
-                                        options=[
-                                            {"label": " Mettre en surbrillance les périodes où :","value": "enabled"}
-                                        ],
-                                    ),
-                                    dcc.Dropdown(
-                                        id='event-var',
-                                        options=[
-                                            {'label': var, 'value': var}
-                                            for var in cfg.VARIABLE_MAP.keys()
-                                        ],
-                                        value='Dry bulb (°C)', clearable=False, style={"marginTop": "3px"}
-                                    ),
-                                    dcc.Dropdown(
-                                        id='event-func',
-                                        options=[{'label': label, 'value': label} for label in cfg.FUNC_MAP.keys()],
-                                        value='Moyenne', clearable=False, style={"marginTop": "3px"}
-                                    ),
-                                    dcc.Dropdown(
-                                        id='event-period',
-                                        options=[{'label': label, 'value': label} for label in cfg.FREQ_MAP.keys()],
-                                        value='Jour', clearable=False, style={"marginTop": "3px"}
-                                    ),
+                                    html.Label("Evènements", style={'fontWeight': 'bold', 'marginTop': '10px'}),
+                                    html.Label("L'affichage d'évènements n'est disponbile que lorsqu'un seul fichier est chargé.", id='event-warning-text', style={'marginTop': '10px', 'display':'none'}),
                                     html.Div(
                                         [
-                                            html.Span("Est inférieur ou égal à"),
-                                            dcc.Input(
-                                                id='event-threshold-max',
-                                                type='number', placeholder='Seuil inférieur',
-                                                debounce=True, style={'marginLeft':'5px', 'flex': 1}
+                                            dcc.Checklist(
+                                                id="event-enabled", value=[], style={"marginTop": "5px"},
+                                                options=[
+                                                    {"label": " Mettre en surbrillance les périodes où :",
+                                                     "value": "enabled"}
+                                                ],
                                             ),
-                                        ],
-                                        style={"marginTop": "3px"}
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Span("ET supérieur ou égal à"),
-                                            dcc.Input(
-                                                id='event-threshold-min',
-                                                type='number', placeholder='Seuil supérieur',
-                                                debounce=True, style={'marginLeft':'5px', 'flex': 1}
+                                            dcc.Dropdown(
+                                                id='event-var',
+                                                options=[
+                                                    {'label': cfg.VAR_NAME_EN_TO_FR[var], 'value': var}
+                                                    for var in cfg.VARIABLE_MAP.keys()
+                                                ],
+                                                value='Dry bulb (°C)', clearable=False, style={"marginTop": "3px"}
                                             ),
-                                        ],
-                                        style={"marginTop": "3px"}
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Span("Pour une période min. de"),
-                                            dcc.Input(
-                                                id='event-duration-min',
-                                                type='number', placeholder='', min=1, step=1, value=1,
-                                                debounce=True, style={'marginLeft':'5px', 'width': '50px'}
+                                            dcc.Dropdown(
+                                                id='event-func',
+                                                options=[{'label': label, 'value': label} for label in
+                                                         cfg.FUNC_MAP.keys()],
+                                                value='Moyenne', clearable=False, style={"marginTop": "3px"}
                                             ),
-                                            html.Span("", id = 'event-period-text', style={'marginLeft':'5px'}),
+                                            dcc.Dropdown(
+                                                id='event-period',
+                                                options=[{'label': label, 'value': label} for label in
+                                                         cfg.FREQ_MAP.keys()],
+                                                value='Jour', clearable=False, style={"marginTop": "3px"}
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Span("Est inférieur ou égal à"),
+                                                    dcc.Input(
+                                                        id='event-threshold-max',
+                                                        type='number', placeholder='Seuil inférieur',
+                                                        debounce=True, style={'marginLeft': '5px', 'flex': 1}
+                                                    ),
+                                                ],
+                                                style={"marginTop": "3px"}
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Span("ET supérieur ou égal à"),
+                                                    dcc.Input(
+                                                        id='event-threshold-min',
+                                                        type='number', placeholder='Seuil supérieur',
+                                                        debounce=True, style={'marginLeft': '5px', 'flex': 1}
+                                                    ),
+                                                ],
+                                                style={"marginTop": "3px"}
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Span("Pour une période min. de"),
+                                                    dcc.Input(
+                                                        id='event-duration-min',
+                                                        type='number', placeholder='', min=1, step=1, value=1,
+                                                        debounce=True, style={'marginLeft': '5px', 'width': '50px'}
+                                                    ),
+                                                    html.Span("", id='event-period-text', style={'marginLeft': '5px'}),
+                                                ],
+                                                style={"marginTop": "3px"}
+                                            ),
+                                            html.Label("", id='event-result-text', style={'marginTop': '10px'}),
                                         ],
-                                        style={"marginTop": "3px"}
+                                        id="event-options-container"
                                     ),
-                                    html.Label("", id='event-result-text', style={'marginTop': '10px'}),
                                 ],
                                 id="events-container"
                             )
                         ]),
                         className='mt-2'
-                    )
+                    ),
+                    *load_tooltips("Graphe")
                 ]
             ),
 
@@ -320,15 +331,15 @@ def create_page_weather_graph():
 
                             html.Div(
                                 [
-                                    html.Label("Normalisation", style={'fontWeight': 'bold', 'marginTop': '10px'}),
+                                    html.Label("Echelle de l'axe", style={'fontWeight': 'bold', 'marginTop': '10px'}),
                                     dcc.RadioItems(
                                         id='wr-norm',
                                         options=[
-                                            {'label': 'Nb de valeurs', 'value': 'None'},
+                                            {'label': 'Nb de valeurs (heures)', 'value': 'heures'},
                                             {'label': '% du total', 'value': 'total'},
-                                            {'label': '% par secteur', 'value': 'dir'},
+                                            #{'label': '% par secteur', 'value': 'dir'}, #option pour normaliser sur chaque secteur - pas hyper utile
                                         ],
-                                        value='None',
+                                        value='heures',
                                         inputStyle={"margin-right": "8px"},
                                         labelStyle={'display': 'inline-block', 'margin-right': '16px'}
                                     ),
@@ -425,7 +436,7 @@ def create_page_weather_graph():
         ),
     ]
 
-    children.extend(load_tooltips())
+    children.extend(load_tooltips("general"))
 
     layout = html.Div(children, className = 'page-root')
 

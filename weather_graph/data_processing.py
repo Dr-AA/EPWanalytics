@@ -199,21 +199,24 @@ def build_windrose_figure(df_src, start_label, end_label, n_dir_bins, normalize)
         )
 
     # 6) Normalisation
-    if normalize in (None, "None"):
+    if normalize in (None, "heures"):
         values = M
-        r_label = "Comptes"
+        r_label = "Nombre d'heures"
+        radial_ticksuffix = "h"
     elif normalize == "total":
         values = (M / M_sum) * 100.0
         r_label = "% du total"
+        radial_ticksuffix = "%"
     elif normalize == "dir":
         row_sum = M.sum(axis=1, keepdims=True)
         row_sum[row_sum == 0] = np.nan
         values = (M / row_sum) * 100.0
         values = np.nan_to_num(values)
         r_label = "% par secteur"
+        radial_ticksuffix = "%"
     else:
         values = M
-        r_label = "Comptes"
+        r_label = "Nombre d'heures"
 
     # 7) Libellés + couleurs
     speed_labels = ["< 2", "2–5", "5–10", "10–20", "20–30", "30–40", "40–50", "≥ 50"]
@@ -245,6 +248,7 @@ def build_windrose_figure(df_src, start_label, end_label, n_dir_bins, normalize)
             ),
             radialaxis=dict(
                 ticks='outside',
+                ticksuffix=radial_ticksuffix,
                 showline=True,
                 gridcolor='rgba(0,0,0,0.2)'
             )

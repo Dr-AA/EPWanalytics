@@ -47,7 +47,7 @@ VAR_NAME_EN_TO_FR = {
     "Wet bulb (°C)": "Température de bulbe humide (°C)",
     "Dew point (°C)": "Température du point de rosée (°C)",
     "Relative humidity (%)": "Humidité relative (%)",
-    "Mixing ratio (g/kg)" : "Mixing ratio (g/kg)" ,
+    "Mixing ratio (g/kg)" : "Rapport de mélange (g/kg)" ,
     "Enthalpy (kJ/kg)" : "Enthalpie (kJ/kg)",
     "Wind speed mean (m/s)": "Vitesse moyenne du vent (m/s)",
     "Wind speed max (m/s)": "Vitesse max du vent (raffales) (m/s)",
@@ -56,7 +56,7 @@ VAR_NAME_EN_TO_FR = {
     "Global horizontal radiation (Wh/m²)": "Rayonnement global horizontal (Wh/m²)",
     "Direct normal radiation (Wh/m²)": "Rayonnement direct normal (Wh/m²)",
     "Diffuse horizontal radiation (Wh/m²)": "Rayonnement diffus horizontal (Wh/m²)",
-    "Horizontal infrared rad. intensity (Wh/m²)" : "Horizontal infrared rad. intensity (Wh/m²)",
+    "Horizontal infrared rad. intensity (Wh/m²)" : "Rayonnement infrarouge horizontal (Wh/m²)",
     "Air pressure (Pa)": "Pression atmosphérique (Pa)",
     "Vapor pressure (Pa)":"Pression de vapeur d'eau (Pa)",
     "Snow Depth (cm)": "Hauteur de neige (cm)",
@@ -275,17 +275,25 @@ MANUAL_COLOR_MAP_OPTIONS = [
 TOOLTIPS_ENABLED = True
 
 TOOLTIPS = {
-"advanced-mode" : "Le mode avancé permet d'accéder à des options supplémentaires",
-"station-dropdown" : "Sélection de la station météo",
-"dataset-dropdown" : [
-    "RCP : Scenarios d'émissions de gaz à effet de serre. RCP 2.6 est très optimiste; RCP 8.5 correspond au 'business as usual'",
-    html.Br(),
-    "DRY : scenario représentatif de la période (Design Reference Year)",
-    html.Br(),
-    "1-in-10 : scenario représentatif d'un été chaud survenant environ 1 année sur 10",
-    ],
-"date-interval-container" : "Ce filtre s'applique au graphe (également avec l'axe X en mode tri), aux roses des vents et heatmaps",
-"Agregation-container" : "Les données brutes sont au pas de temps horaire. La combinaison d'un pas de temps et d'une fonction permet d'afficher, par exemple, des moyennes mensuelles ou des maxima journaliers.",
-"x-mode" : "Le mode Tri permet de classer les valeurs pour rapidement voir leur distribution.",
+    "general" : { #Tooltips de l'interface principale -> chargés une seule fois
+        "advanced-mode" : "Le mode avancé permet d'accéder à des options supplémentaires",
+        "station-dropdown" : "Sélection de la station météo",
+        "dataset-dropdown" : [
+            "RCP : Scenarios d'émissions de gaz à effet de serre. RCP 2.6 est très optimiste; RCP 8.5 correspond au 'business as usual'",
+            html.Br(),
+            "DRY : scenario représentatif de la période (Design Reference Year)",
+            html.Br(),
+            "1-in-10 : scenario représentatif d'un été chaud survenant environ 1 année sur 10",
+            ],
+        "loaded-sources-container":"Charger plusieurs fichiers pour les comparer. Cliquer sur leur couleur et type de traits pour modifier l'apparence.",
+        "date-interval-container" : "Ce filtre s'applique au graphe (également avec l'axe X en mode tri), aux roses des vents et heatmaps",
+        "Agregation-container" : "Les données brutes sont au pas de temps horaire. La combinaison d'un pas de temps et d'une fonction permet d'afficher, par exemple, des moyennes mensuelles ou des maxima journaliers.",
+        "x-mode" : "Le mode Tri permet de classer les valeurs pour rapidement voir leur distribution.",
+    },
+    "Graphe" : { #Tooltips de la tab "graph" -> rechargés à chaque fois que la tab est réactivée
+        "Agregation-container" : "Les données brutes sont au pas de temps horaire. La combinaison d'un pas de temps et d'une fonction permet d'afficher, par exemple, des moyennes mensuelles ou des maxima journaliers.",
+        "x-mode" : "Le mode Tri permet de classer les valeurs pour rapidement voir leur distribution.",
+        "events-container" : "Ces options permettent de définir un filtre, et mettre en surbrillance les période qui répondent au(x) critère(s)."
+    }
 }
 
