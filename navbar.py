@@ -6,25 +6,26 @@ from dash import html
 def create_navbar():
     navbar = html.Div([
         dbc.Row([
-            dbc.Col(html.Img(src='assets/Logo-Bleu-V2.png', alt='logo', width='150px'), width=2),
+            dbc.Col(
+                html.Img(
+                    src=r'assets/Logo-Bleu-V2.png',
+                    alt='image',
+                    className='img-fluid',
+                    style={'max-width': '140px'}
+                ),
+                width=2,
+                className='d-flex align-items-center justify-content-center'
+            ),
             dbc.Col(
                 dbc.NavbarSimple(
-                    children=[
-                        dbc.DropdownMenu(
-                            nav=True, in_navbar=True, label="Menu",
-                            children=[
-                                dbc.DropdownMenuItem("EPW Analytics", href='/epw'),
-                                dbc.DropdownMenuItem("Accueil", href='/')
-                            ],
-                        ),
-                    ],
-                    brand="WeatherFileAnalytics — Visualisation de données météo",
-                    brand_style={"textTransform": "capitalize"},
+                    children=[],
+                    brand="ClimateViz : get to know your weather files for building thermal simulations",
+                    brand_style={"textTransform": "none"},
                     brand_href="/",
                     sticky="top",
                     color="#1f388b",  # couleur de fond
                     dark=True,        # texte clair
-                    style={"paddingTop": "10px", "paddingBottom": "25px"}
+                    style={"height": '50px'}
                 )
             )
         ],
