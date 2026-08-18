@@ -280,13 +280,13 @@ TOOLTIPS = {
         "station-dropdown" : "Sélection de la station météo",
         "dataset-dropdown" : ["RCP : Scénarios définis par le GIEC pour l'évolution des émissions de gaz à effet de serre (GES).",
             html.Ul([
-                html.Li([html.B("RCP 2.6 : "), "Scénario le plus optimiste - de 1.5 à 2°C de réchauffement'."]),
+                html.Li([html.B("RCP 2.6 : "), "Scénario le plus optimiste - de 1.5 à 2°C de réchauffement d'ici à 2100'."]),
                 html.Li([html.B("RCP 8.5 : "), "Scénario pessimiste - pas de réduction des émissions de GES '."]),
             ]),
             "Pour une période donnée (2023, 2035, 2060) et un RCP donné, 2 climats sont disponibles :",
             html.Ul([
                 html.Li([html.B("DRY : "), "Design Référence Year, l'année standard de référence."]),
-                html.Li([html.B("1-in-10 : "), " Année exceptionnelement chaude, à occurence 1 année sur 10"]),
+                html.Li([html.B("1-in-10 : "), " Année exceptionnellement chaude, à occurence 1 année sur 10"]),
             ])
         ],
         "loaded-sources-container" : ["Charger plusieurs scénarios climatiques pour les comparer.",html.Br(),
