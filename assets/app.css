@@ -48,3 +48,16 @@
 
 /* Optionnel : réduire le padding des tabs */
 .dash-tabs { margin-top: 0 !important; }
+
+/* Widen Bootstrap tooltips (default is 200px) */
+.tooltip-inner {
+    max-width: 800px;
+    text-align: left;
+    background-color: #C9C1BF;        /* white background */
+    color: #1f388b;                   /* matches your navbar color */
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 16px;
+    border: 1px solid #1f388b;        /* thin border in your navbar blue */
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}

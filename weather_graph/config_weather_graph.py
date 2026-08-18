@@ -276,16 +276,21 @@ TOOLTIPS_ENABLED = True
 
 TOOLTIPS = {
     "general" : { #Tooltips de l'interface principale -> chargés une seule fois
-        "advanced-mode" : "Le mode avancé permet d'accéder à des options supplémentaires",
+        "advanced-mode" : "Le mode avancé permet d'accéder à des options d'analyse supplémentaires",
         "station-dropdown" : "Sélection de la station météo",
-        "dataset-dropdown" : [
-            "RCP : Scenarios d'émissions de gaz à effet de serre. RCP 2.6 est très optimiste; RCP 8.5 correspond au 'business as usual'",
-            html.Br(),
-            "DRY : scenario représentatif de la période (Design Reference Year)",
-            html.Br(),
-            "1-in-10 : scenario représentatif d'un été chaud survenant environ 1 année sur 10",
-            ],
-        "loaded-sources-container":"Charger plusieurs fichiers pour les comparer. Cliquer sur leur couleur et type de traits pour modifier l'apparence.",
+        "dataset-dropdown" : ["RCP : Scénarios définis par le GIEC pour l'évolution des émissions de gaz à effet de serre (GES).",
+            html.Ul([
+                html.Li([html.B("RCP 2.6 : "), "Scénario le plus optimiste - de 1.5 à 2°C de réchauffement'."]),
+                html.Li([html.B("RCP 8.5 : "), "Scénario pessimiste - pas de réduction des émissions de GES '."]),
+            ]),
+            "Pour une période donnée (2023, 2035, 2060) et un RCP donné, 2 climats sont disponibles :",
+            html.Ul([
+                html.Li([html.B("DRY : "), "Design Référence Year, l'année standard de référence."]),
+                html.Li([html.B("1-in-10 : "), " Année exceptionnelement chaude, à occurence 1 année sur 10"]),
+            ])
+        ],
+        "loaded-sources-container" : ["Charger plusieurs scénarios climatiques pour les comparer.",html.Br(),
+                                      "Cliquer sur leur couleur et type de traits pour modifier l'apparence."],
         "date-interval-container" : "Ce filtre s'applique au graphe (également avec l'axe X en mode tri), aux roses des vents et heatmaps",
         "Agregation-container" : "Les données brutes sont au pas de temps horaire. La combinaison d'un pas de temps et d'une fonction permet d'afficher, par exemple, des moyennes mensuelles ou des maxima journaliers.",
         "x-mode" : "Le mode Tri permet de classer les valeurs pour rapidement voir leur distribution.",
