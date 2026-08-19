@@ -67,8 +67,8 @@ def callbacks_weather_graph(app):
                 for f in os.listdir(fullpath):
                     if f.lower().endswith((".epw", ".csv")):
                         filepath = os.path.join(fullpath, f)
-                        #label = f"{subfolder} / {f}"
-                        options.append({"label": f, "value": filepath})
+                        label = os.path.splitext(f)[0]
+                        options.append({"label": label, "value": filepath})
 
         return options
 
