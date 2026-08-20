@@ -4,30 +4,33 @@ import dash_bootstrap_components as dbc
 from dash import html
 
 def create_navbar():
-    navbar = html.Div([
+    navbar = dbc.Container(
         dbc.Row([
-            dbc.Col(html.Img(src='assets/Logo-Bleu-V2.png', alt='logo', width='150px'), width=2),
+            dbc.Col(
+                html.Img(
+                    src=r'assets/Logo-Bleu-V2.png',
+                    alt='image',
+                    className='img-fluid',
+                    style={'max-width': '180px','marginTop':"0px"}
+                ),
+                width=2,
+                className='d-flex align-items-center justify-content-center'
+            ),
             dbc.Col(
                 dbc.NavbarSimple(
-                    children=[
-                        dbc.DropdownMenu(
-                            nav=True, in_navbar=True, label="Menu",
-                            children=[
-                                dbc.DropdownMenuItem("EPW Analytics", href='/epw'),
-                                dbc.DropdownMenuItem("Accueil", href='/')
-                            ],
-                        ),
-                    ],
-                    brand="WeatherFileAnalytics — Visualisation de données météo",
-                    brand_style={"textTransform": "capitalize"},
+                    children=[],
+                    brand="ClimateCheck : Say Hi to your Building Sim Weather Files",
+                    brand_style={"textTransform": "none","fontFamily": "Verdana, sans-serif","fontSize": "17px"},
                     brand_href="/",
                     sticky="top",
                     color="#1f388b",  # couleur de fond
                     dark=True,        # texte clair
-                    style={"paddingTop": "10px", "paddingBottom": "25px"}
+                    style={"height": '50px'}
                 )
             )
         ],
-        style={"marginBottom": "0px"})
-    ])
+        style={"marginBottom": "50px"}),
+        fluid=False,
+        style={"maxWidth": "1800px"}
+    )
     return navbar

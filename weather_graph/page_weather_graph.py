@@ -40,7 +40,7 @@ def load_tooltips(where):
     these_tooltips = cfg.TOOLTIPS[where]
 
     return [
-        dbc.Tooltip(text, target=target, style={"maxWidth": "500px", "textAlign": "left",})
+        dbc.Tooltip(text, target=target, style={"maxWidth": "800px", "textAlign": "left",})
         for target, text in these_tooltips.items()
     ]
 
@@ -62,7 +62,7 @@ def create_page_weather_graph():
             #0 Mode simplifié / avancé
             dcc.Checklist(
                 id="advanced-mode",
-                options=[{"label": " Options avancées","value": "advanced"}],
+                options=[{"label": " Mode avancé","value": "advanced"}],
                 value=[]
             ),
 
@@ -78,7 +78,7 @@ def create_page_weather_graph():
             ),
 
             #2 Scenario climatique (choix du fichier)
-            html.Label("Scenario climatique", style={'fontWeight': 'bold', "marginTop": "10px"}),
+            html.Label("Scénario climatique", style={'fontWeight': 'bold', "marginTop": "10px"}),
             dcc.Dropdown(
                 id='dataset-dropdown',
                 options=[],
@@ -418,6 +418,7 @@ def create_page_weather_graph():
 
     # ---- Grille : gauche (contrôles) / droite (affichage) ----
     children = [
+
         html.Div(id='tabs-resize-trigger', style={'display': 'none'}),
         dbc.Row(
             [
@@ -438,6 +439,11 @@ def create_page_weather_graph():
 
     children.extend(load_tooltips("general"))
 
-    layout = html.Div(children, className = 'page-root')
+    layout = dbc.Container(
+        children,
+        fluid=False,  # <-- contained, centered, with L/R margins
+        className='page-root',
+        style={"maxWidth": "1800px"}  # optional: cap the width
+    )
 
     return layout
