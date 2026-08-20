@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 
+
 from generic_helpers import hex_to_rgba, pad_y_axis_range, ddmm_to_ref_dates, parse_ddmm, extract_axis_ranges_or_auto, extract_range_from_relayout
 
 from weather_graph.read_weather_file import read_weather_file, REFERENCE_YEAR
@@ -1021,7 +1022,7 @@ def callbacks_weather_graph(app):
         if n == 1:
             rows, cols = 1, 1
         elif n == 2:
-            rows, cols = 1, 2
+            rows, cols = 2, 1 #<-- Ici mettre 2,1 au lieu de 1,2
         else:
             rows, cols = 2, 2
 
@@ -1092,7 +1093,8 @@ def callbacks_weather_graph(app):
                     row=r, col=c
                 )
                 # Titres axes par subplot
-                fig.update_xaxes(title_text="Jour de l'année", row=r, col=c)
+                if r == rows : #<-- ajouter cette condition pour avoir titre de l'axe x seulement sur la dernière ligne
+                    fig.update_xaxes(title_text="Jour de l'année", row=r, col=c)
                 fig.update_yaxes(title_text="Heure", row=r, col=c)
 
             # Prochaine case
