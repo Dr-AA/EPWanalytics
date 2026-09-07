@@ -116,7 +116,7 @@ def create_page_weather_graph():
                         id='date-end', type='text', value='31.12',
                         placeholder='DD.MM', style={'width': '45%'}
                     ),
-                ], style={'marginBottom': '10px'}),
+                ], style={'marginBottom': '5px'}),
             ],
             id="date-interval-container"
             ),
@@ -191,6 +191,14 @@ def create_page_weather_graph():
                                 value='date',
                                 inputStyle={"margin-right": "8px"},
                                 labelStyle={'display': 'inline-block', 'margin-right': '16px'}
+                            ),
+
+                            dcc.Checklist(
+                                id="night-enabled", value=[], style={"marginTop": "5px"},
+                                options=[
+                                    {"label": " Afficher les nuits en gris",
+                                     "value": "enabled"}
+                                ],
                             ),
 
                             #--- Axe Y ---
@@ -366,7 +374,7 @@ def create_page_weather_graph():
                             dcc.Dropdown(
                                 id='heatmap-var',
                                 options=[
-                                    {'label': label, 'value': label}
+                                    {'label': cfg.VAR_NAME_EN_TO_FR[label], 'value': label}
                                     for label in cfg.VARIABLE_MAP.keys()
                                 ],
                                 value=list(cfg.VARIABLE_MAP.keys())[0],
@@ -406,14 +414,19 @@ def create_page_weather_graph():
     )
 
     # ---- Colonne droite : zone d'affichage (les 3 Graphs) ----
-    right_display = html.Div(
-        [
-            dcc.Graph(id='epw-graph', style={'height': '100%'}, config={'displayModeBar': True}),
-            dcc.Graph(id='epw-windrose', style={'height': '100%', 'display': 'none'}),
-            dcc.Graph(id='heat-map', style={'height': '100%', 'display': 'none'}),
-        ],
-        id='right-display',
-        className='right-display'
+    right_display = dcc.Loading(
+        html.Div(
+            children = [
+                dcc.Graph(id='epw-graph', style={'height': '100%'}, config={'displayModeBar': True}),
+                dcc.Graph(id='epw-windrose', style={'height': '100%', 'display': 'none'}),
+                dcc.Graph(id='heat-map', style={'height': '100%', 'display': 'none'}),
+            ],
+            id='right-display',
+            className='right-display',
+        ),
+        type = "circle",
+        className = "loading-container",
+        parent_style={"height": "100%"}
     )
 
     # ---- Grille : gauche (contrôles) / droite (affichage) ----

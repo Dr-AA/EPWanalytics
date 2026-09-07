@@ -1,14 +1,14 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-def add_events_to_figure(fig, events_df):
+def add_events_to_figure(fig, events_df, fill_color, legend_text):
     nb_events = len(events_df)
 
     if nb_events == 0:
         print("Aucun évènements trouvé")
-    elif nb_events > 30:
-        print(f"WARN: Le nombre d'évènements ({nb_events}) est supérieur à 30")
-        go.Figure().update_layout(template='plotly_white', title=f"Le nombre d'évènements trouvés ({nb_events}) est trop grand pour l'affichage; veuillez modifier les critères.")
+    elif nb_events > 100:
+        print(f"WARN: Le nombre d'évènements ({nb_events}) est supérieur à 100")
+        fig.update_layout(title=f"Le nombre d'évènements trouvés ({nb_events}) est trop grand pour l'affichage; veuillez modifier les critères.")
     else :
         print(f"Adding {len(events_df)} events")
 
@@ -22,7 +22,7 @@ def add_events_to_figure(fig, events_df):
             fig.add_vrect(
                 x0=event["start_datetime"]-half_period,
                 x1=event["end_datetime"]+half_period,
-                fillcolor="red",
+                fillcolor=fill_color,
                 opacity=0.15,
                 line_width=0,
             )
@@ -31,9 +31,9 @@ def add_events_to_figure(fig, events_df):
         fig.add_trace(
             go.Scatter(
                 x=[None],y=[None], mode="lines",
-                line=dict(color="red", width=10),
+                line=dict(color=fill_color, width=10),
                 opacity=0.15,
-                name="Evènements",
+                name=legend_text,
                 showlegend=True,
             )
         )

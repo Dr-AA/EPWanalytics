@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 import os
 
-
 from generic_helpers import hex_to_rgba, pad_y_axis_range, ddmm_to_ref_dates, parse_ddmm, extract_axis_ranges_or_auto, extract_range_from_relayout
 
 from weather_graph.read_weather_file import read_weather_file, REFERENCE_YEAR
@@ -478,14 +477,18 @@ def callbacks_weather_graph(app):
         Input("epw-var", "value"),
         Input("epw-period", "value"),
         Input("epw-func", "value"),
+        Input("night-enabled", "value")
     )
-    def compute_plot_data(loaded_files, var_col, period_label, func_label):
+    def compute_aggregated_data(loaded_files, var_col, period_label, func_label, night_enabled):
 
         df_master = build_master_df(loaded_files)
         if df_master.empty:
             return
 
-        plot_df = compute_aggregated_df(df_master, period_label, func_label, var_col)
+        var = [var_col]
+        if night_enabled: var.append("Diffuse horizontal radiation (Wh/m²)")
+
+        plot_df = compute_aggregated_df(df_master, period_label, func_label, var)
 
         return plot_df.to_json(date_format="iso")
 
@@ -504,6 +507,7 @@ def callbacks_weather_graph(app):
             Input('ymax', 'value'),
             Input("aggregated-data-store", "data"),
             Input("display-settings-store", "data"),
+            Input("night-enabled", "value"),
             #Inputs évènements :
             Input("event-enabled", "value"),
             Input("event-data-store", "data"),
@@ -512,7 +516,7 @@ def callbacks_weather_graph(app):
         prevent_initial_call=True
     )
     def update_weather_graph(active_tab, start_label, end_label, var_col, period_label, func_label, x_mode,
-                             y_mode, ymin, ymax, plot_df_json, display_store,
+                             y_mode, ymin, ymax, plot_df_json, display_store, night_enabled,
                              event_enabled, events_json,
                              axes_store,):
         print("-- Call to update_weather_graph --")
@@ -532,6 +536,10 @@ def callbacks_weather_graph(app):
         # 2) Construire les traces selon x_mode
         #sources = df_master["source"].unique()
         #color_map = build_color_map(sources)
+
+        sd, sm = parse_ddmm(start_label, (1, 1))
+        ed, em = parse_ddmm(end_label, (31, 12))
+
         if x_mode == 'date':
 
             # Axe x : Mode temporel
@@ -553,12 +561,15 @@ def callbacks_weather_graph(app):
                 x_title = f"Valeur annuelle"
                 fig.update_xaxes(showticklabels=False)
 
-            else: #-> line plot
-                mode_line = 'lines' if period_label in ('Heure', 'h', 'Hour') else 'lines' #'lines+markers'
+            else: # period_label != année -> line plot
+                mode_line = 'lines' if period_label in ('Heure', 'h', 'Hour') else 'lines+markers'
 
                 show_band = func_label == "Moyenne et enveloppe min/max"
 
-                for src, df_src in plot_df.groupby("source"):
+                n_groups = plot_df["source"].nunique()
+
+                for i, (src, df_src) in enumerate(plot_df.groupby("source")):
+                    df_src = filter_by_period(df_src, sd, sm, ed, em)
                     payload = display_store[src]
                     if not payload["visible"]:
                         continue
@@ -570,14 +581,6 @@ def callbacks_weather_graph(app):
 
                         df_min = df_min.sort_values("datetime")
                         df_max = df_max.sort_values("datetime")
-                        print(len(df_min))
-                        print(len(df_mean))
-                        print(len(df_max))
-                        print(df_min["datetime"].is_monotonic_increasing)
-                        print(df_max["datetime"].is_monotonic_increasing)
-                        print(df_min["datetime"].equals(df_max["datetime"]))
-                        print(df_min["datetime"].equals(df_mean["datetime"]))
-
 
                         fig.add_trace(
                             go.Scatter(
@@ -607,7 +610,7 @@ def callbacks_weather_graph(app):
                                 hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
                             )
                         )
-                    else:
+                    else: #if not show_band
                         fig.add_trace(
                             go.Scatter(
                                 x=df_src["datetime"],
@@ -622,7 +625,14 @@ def callbacks_weather_graph(app):
                                 hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
                             )
                         )
-
+                    # Ajouter nuits
+                    if "enabled" in night_enabled and period_label == "Heure" and i == n_groups-1: # i == n_groups-1 pour n'afficher les nuits que sur la base du dernier dataset (permet d'avoir la légende dans l'ordre)
+                        nights = detect_events(
+                            df_src, variable="Diffuse horizontal radiation (Wh/m²)",
+                            period_label="Heure", func_label="Moyenne",
+                            threshold_min=None, threshold_max=1, duration_min=1
+                        )
+                        add_events_to_figure(fig, nights, "gray", "Nuit")
                 x_title = ""
                 # ticks de l'axe temporel x : ne pas afficher l'année
                 fig.update_xaxes(
@@ -631,7 +641,20 @@ def callbacks_weather_graph(app):
                         dict(dtickrange=[86400000, None], value="%d %b"),
                     ]
                 )
+                if period_label in ('Month', 'Mois', 'mois', 'm', 'ME'):
+                    month_ticks = pd.date_range(start='2001-01-01',end='2001-12-01',freq='MS') + pd.Timedelta(days=14)
+                    fig.update_xaxes(
+                        tickmode="array",
+                        tickvals=month_ticks,
+                        ticktext=[
+                            "Jan", "Feb", "Mar", "Apr",
+                            "May", "Jun", "Jul", "Aug",
+                            "Sep", "Oct", "Nov", "Dec"
+                        ]
+                    )
+
             subtitle = func_label
+
         else:
             print('mode tri')
             # Axe x : Mode tri — faire le tri APRES agrégation
@@ -639,8 +662,6 @@ def callbacks_weather_graph(app):
             for src, df_src in plot_df.groupby("source"):
                 # Nettoyage NA, tri stable pour reproductibilité
                 tmp = df_src[['datetime', var_col]].dropna(subset=[var_col]).copy()
-                sd, sm = parse_ddmm(start_label, (1, 1))
-                ed, em = parse_ddmm(end_label, (31,12))
                 tmp = filter_by_period(tmp,sd,sm,ed,em)
                 tmp = tmp.sort_values(by=var_col, ascending=isAscending, kind='mergesort')  # stable
                 tmp['rank'] = range(1, len(tmp) + 1)  # 1..n pour cette source
@@ -663,6 +684,24 @@ def callbacks_weather_graph(app):
             x_title = "Index (1..n)"
             subtitle = "Tri croissant" if isAscending else "Tri décroissant"
 
+        #Set Hovertemplate
+        if period_label == "Heure":
+            date_fmt = "%d %b %H:%M"
+        elif period_label == "Jour":
+            date_fmt = "%d %b"
+        elif period_label == "Semaine":
+            date_fmt = "Semaine du %d %b"
+        elif period_label == "Mois":
+            date_fmt = "%b"
+        elif period_label == "Année":
+            date_fmt = "%Y"
+        hovertemplate =(
+            f"%{{x|{date_fmt}}}<br>"
+            "Valeur : %{y:.2f}"
+            "<extra></extra>" #pour cacher le nom de la série
+        )
+        fig.update_traces(hovertemplate=hovertemplate)
+
         # 3) Layout de base
         if func_label == "Somme cumulée" :
             title = f"{func_label} (cumul depuis 01.01)"
@@ -674,7 +713,7 @@ def callbacks_weather_graph(app):
             title=f"{cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}" + ("" if x_mode == 'date' else f" — {subtitle}") if func_label != "Somme cumulée" else f"{cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col)} : {func_label} par {period_label}",
             xaxis_title=x_title,
             yaxis_title=cfg.VAR_NAME_EN_TO_FR.get(var_col, var_col),
-            hovermode='x unified',
+            hovermode='closest',
             legend=dict(
                 x=0.99, y=0.99, xanchor='right', yanchor='top',
                 bgcolor='rgba(255,255,255,0.4)', bordercolor='rgba(0,0,0,0.2)', borderwidth=1
@@ -703,7 +742,7 @@ def callbacks_weather_graph(app):
         #5) Evènements
         if "enabled" in event_enabled and events_json:
             events_df = pd.read_json(StringIO(events_json))
-            fig = add_events_to_figure(fig,events_df)
+            fig = add_events_to_figure(fig,events_df, "red", "Evènements")
 
         #6) Axe Y : respecter un zoom manuel mémorisé, sinon logique Auto/Manuel
         if axes_store.get('y') == 'auto':
@@ -742,6 +781,8 @@ def callbacks_weather_graph(app):
     @app.callback(
         Output("event-data-store", "data"),
         Input("loaded-files-store", "data"),
+        Input('date-start', 'value'),
+        Input('date-end', 'value'),
         Input("event-var", "value"),
         Input("event-func", "value"),
         Input("event-period", "value"),
@@ -750,12 +791,20 @@ def callbacks_weather_graph(app):
         Input("event-duration-min", "value"),
         prevent_initial_call=True
     )
-    def compute_event_data(loaded_files, variable, func_label, period_label, threshold_min, threshold_max, duration_min):
+    def compute_event_data(loaded_files, start_label, end_label, variable, func_label, period_label, threshold_min, threshold_max, duration_min):
         print("-- Call to compute_event_data --")
         df_master = build_master_df(loaded_files)
 
+        if df_master.empty:
+            return None
+
+        sd, sm = parse_ddmm(start_label, (1, 1))
+        ed, em = parse_ddmm(end_label, (31, 12))
+
+        df_filt = filter_by_period(df_master, sd, sm, ed, em)
+
         events_df = detect_events(
-            df_master,
+            df_filt,
             variable=variable,
             period_label=period_label,
             func_label=func_label,
@@ -1118,11 +1167,13 @@ def callbacks_weather_graph(app):
     @app.callback(
         Output("date-interval-container","style"),
         Output("epw-var", "options"),
+        Output("heatmap-var", "options"),
         Output("epw-func", "options"),
         Output("x-mode", "options"),
         Output("y-axis-container", "style"),
         Output("date-start", "value"),
         Output("date-end", "value"),
+        Output("night-enabled", "style"),
         Output("events-container","style"),
         Output("event-enabled","value"),
         Output("wind-rose-normalisation-container","style"),
@@ -1150,6 +1201,10 @@ def callbacks_weather_graph(app):
 
         x_options = selected_mode["x_options"]
 
+        night_style = (
+            {} if selected_mode["show_night_checkbox"] else {"display": "none"}
+        )
+
         y_axis_container_style = (
             {} if selected_mode["show_y_axis_scaling_options"] else {"display": "none"}
         )
@@ -1173,11 +1228,13 @@ def callbacks_weather_graph(app):
         return [
             events_style,
             var_options,
+            var_options,
             func_options,
             x_options,
             y_axis_container_style,
             date_start,
             date_end,
+            night_style,
             events_style,
             event_enabled,
             windrose_normalisation_container_style,

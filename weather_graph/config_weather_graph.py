@@ -35,13 +35,6 @@ VARIABLE_MAP = {
     "Liquid precipitation quantity (mm/h)": ["LiquidPrecipitationQuantity","","",""]
 }
 
-SIMPLE_VARIABLE_OPTIONS ={
-"Dry bulb (°C)",
-"Relative humidity (%)",
-"Global horizontal radiation (Wh/m²)",
-"Liquid precipitation depth (mm)"
-}
-
 VAR_NAME_EN_TO_FR = {
     "Dry bulb (°C)": "Température de bulbe sec (°C)",
     "Wet bulb (°C)": "Température de bulbe humide (°C)",
@@ -201,6 +194,7 @@ MODES = {
             {'label': 'Date', 'value': 'date'},
             {'label': 'Tri décroissant', 'value': 'desc'},
         ],
+        "show_night_checkbox" : False,
         "show_y_axis_scaling_options" : False,
         "show_events": False,
         "show_windrose_normalisation": False,
@@ -215,6 +209,7 @@ MODES = {
             {'label': 'Tri décroissant', 'value': 'desc'},
             {'label': 'Tri croissant', 'value': 'asc'},
         ],
+        "show_night_checkbox" : False,
         "show_y_axis_scaling_options" : True,
         "show_events": True,
         "show_windrose_normalisation": True,
@@ -293,8 +288,8 @@ TOOLTIPS = {
                                       "Cliquer sur leur couleur et type de traits pour modifier l'apparence."],
         "date-interval-container" : "Ce filtre s'applique au graphe (également avec l'axe X en mode tri), aux roses des vents et heatmaps",
         "Agregation-container" : ["Les données brutes sont au pas de temps horaire.",html.Br() ,
-                                  "Choisissez un pas de temps (journée, semaine ou mois) et une fonction"
-                                  " (moyenne,min, etc.) pour afficher les graphes avec données agrégées (moyennes mensuelles, maxima journaliers, etc.)"],
+                                  "Choisissez un pas de temps (journée, semaine, mois ou année) et une fonction"
+                                  " (moyenne, min, etc.) pour afficher les graphes avec données agrégées (moyennes mensuelles, maxima journaliers, etc.)"],
         "x-mode" : "Le mode Tri permet de classer les valeurs pour analyser leur distribution.",
     },
     "Graphe" : { #Tooltips de la tab "graph" -> rechargés à chaque fois que la tab est réactivée
@@ -302,6 +297,7 @@ TOOLTIPS = {
                                   "Choisissez un pas de temps (journée, semaine ou mois) et une fonction"
                                   " (moyenne,min, etc.) pour afficher les graphes avec données agrégées (moyennes mensuelles, maxima journaliers, etc.)"],
         "x-mode" : "Le mode Tri permet de classer les valeurs pour analyser leur distribution.",
+        "night-enabled" : "Permet de distinguer les heures de nuit et de jour. Ne s'affiche que lorsque le pas de temps horaire est sélectionné, et sur une période inférieure à 100 jours.",
         "events-container" : "Ces options permettent de définir un filtre, et mettre en surbrillance les période qui répondent au(x) critère(s)."
     }
 }

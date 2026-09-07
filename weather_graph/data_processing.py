@@ -22,19 +22,24 @@ def build_master_df(store):
 
     return pd.concat(dfs, ignore_index=True)
 
-def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: str, var_col: str) -> pd.DataFrame:
-    # Aggrège les données selon la période period_label et la fonction func_label, pour la variable var_col
+def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: str, var_names: str | list[str]) -> pd.DataFrame:
+    # Aggrège les données selon la période period_label et la fonction func_label, pour les variables var_cols
     freq = FREQ_MAP[period_label]
     func = FUNC_MAP[func_label]
+    if isinstance(var_names, str): var_names = [var_names] #Si l'argument donné est un string, on le transforme en liste pour la compatibilité avec la suite
 
-    if var_col not in all_df.columns:
-        # Sécurité : renvoyer un DF vide si la variable n'existe pas
-        return pd.DataFrame(columns=["source", "datetime", var_col])
+    missing_columns = [col for col in var_names if col not in all_df.columns]
+    if missing_columns: print(f"WARN: Colonnes manquantes : {missing_columns}")
+
+    var_names = [col for col in var_names if col in all_df.columns]
+
+    if not var_names:
+        return pd.DataFrame
 
     # 1) Agrégation par période
     base = (
         all_df.set_index("datetime")
-        .groupby(["source","source_label"])[var_col]
+        .groupby(["source","source_label"])[var_names]
         .resample(freq)
     )
 
@@ -43,7 +48,12 @@ def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: s
         aggregated = base.sum().reset_index()
         aggregated = aggregated.sort_values(["source", "datetime"])
         # 2) Cumul par source
-        aggregated[var_col] = aggregated.groupby("source")[var_col].cumsum()
+        for var in var_names:
+            aggregated[var] = (
+                aggregated
+                .groupby("source")[var]
+                .cumsum()
+            )
 
     elif func == "mean_min_max":
         mean_df = base.mean().reset_index()
@@ -57,6 +67,12 @@ def compute_aggregated_df(all_df: pd.DataFrame, period_label: str, func_label: s
     else:
         # Cas standard: func est un string ('mean','min',...) ou une fonction lambda (pour les quantiles)
         aggregated = base.agg(func).reset_index()
+
+    #Centrer les données pour l'affichage
+    aggregated = center_period_timestamps(
+        aggregated,
+        period_label
+    )
 
     return aggregated
 
@@ -92,6 +108,41 @@ def filter_by_period(df: pd.DataFrame, start_day: int, start_month: int,
 
     return out.loc[mask].copy()
 
+
+def center_period_timestamps(df, period_label):
+    df = df.copy()
+
+    if period_label == "Semaine": df["datetime"] += pd.Timedelta(days=3.5)
+
+    elif period_label == "Mois":
+
+        month_start = (df["datetime"]
+            .dt.to_period("M")
+            .dt.start_time
+        )
+        month_end = (
+            df["datetime"]
+            .dt.to_period("M")
+            .dt.end_time
+        )
+
+        df["datetime"] = (month_start + (month_end - month_start) / 2) #- pd.Timedelta(hours=12) - pd.Timedelta(minutes=59)
+
+    elif period_label == "Année":
+        year_start = (
+            df["datetime"]
+            .dt.to_period("Y")
+            .dt.start_time
+        )
+        year_end = (
+            df["datetime"]
+            .dt.to_period("Y")
+            .dt.end_time
+        )
+
+        df["datetime"] = (year_start+ (year_end - year_start) / 2)
+
+    return df
 
 #--------------------------------------------------------
 #--------------------- Heat map, Wind rose---------------
@@ -279,7 +330,10 @@ def detect_events(
     if duration_min is None or duration_min < 1:
         return pd.DataFrame()
 
+    print(f"Variable : {variable} | Period label : {period_label} | Func label : {func_label}")
     agg = compute_aggregated_df(df, period_label, func_label, variable)
+    if len(agg) < 1 :
+        print("agg is empty")
 
     events = []
     for source, df_src in agg.groupby("source"):

@@ -1,21 +1,48 @@
 /* Espace plein écran (moins la navbar bootstrap d'environ 90px de haut) */
 .page-root {
   height: calc(100vh - 90px);
+  min-height: 0;
+  overflow: hidden;
   /* Ajuste 90px si ta navbar est plus grande/petite */
 }
 
 /* Utiliser toute la hauteur pour la grille (gauche/droite) */
 .page-grid {
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* === Colonne de droite : occupe toute la hauteur === */
-.right-col, .right-display {
+.right-col {
   height: 100%;
+  overflow-y: hidden;
 }
 .right-display {
   position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /*border: 3px solid red;*/
 }
+.loading-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.loading-container > div {
+    height: 100%;
+}
+
+.graph-container {
+  height: 100%;
+  flex: 1;
+}
+
+.dash-graph {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 
 /* Les Graphs occupent toute la zone d'affichage */
 #epw-graph, #epw-windrose, #heat-map {
@@ -26,58 +53,76 @@
 .dash-tabs { margin-top: 0 !important; }
 
 /* === Colonne de gauche === */
-.left-col, .left-panel {
+
+.left-col {
   height: 100%;
-  padding-right: 4px; /* un peu d'air pour la scrollbar */
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  padding-right: 4px;
+  overflow: hidden;
+
+  /* Diagnostic uniquement */
+  /* border: 3px solid red; */
 }
+
 .left-panel {
-  display: flex;
-  flex-direction: column;
+  /*
+   * height: 0 associé à flex permet de contraindre le panneau
+   * à la hauteur disponible dans left-col.
+   */
+  height: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+
+  padding-right: 4px;
+
   overflow-y: auto;
   overflow-x: hidden;
+
+  box-sizing: border-box;
+
+  padding-top: 10px;
+
+
+  /* Diagnostic uniquement */
+  /* border: 3px solid blue; */
 }
 
-/* Le bloc des paramètres communs garde sa hauteur naturelle */
-.left-panel > .card {
+/* Les enfants gardent leur hauteur naturelle */
+.left-panel > * {
+  flex: 0 0 auto;
+  min-height: auto;
   width: 100%;
-  flex: 0 0 auto;
+  /* À conserver uniquement si l'encadrement est souhaité */
+  border: 1px solid gray;
 }
 
-/* Le conteneur d'onglets est #epw-tabs-parent (class .tab-parent).
-   Dash lui applique overflow:hidden par défaut ; on lui donne une hauteur
-   fléxible et min-height:0 pour qu'il puisse rétrécir. */
-.left-panel > #epw-tabs-parent {
-  width: 100%;
-  flex: 1 1 0;
-  min-height: 0;          /* indispensable pour autoriser le rétrécissement */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;       /* le défilement se reporte sur .tab-content */
-}
-
-/* Barre des boutons d'onglets (id="epw-tabs", class .tab-container) : fixe */
-#epw-tabs-parent > #epw-tabs {
-  flex: 0 0 auto;
-}
-
-/* Corps de l'onglet actif (.tab-content, frère de #epw-tabs) :
-   C'EST ICI QUE LE SCROLL SE PRODUIT. */
-#epw-tabs-parent > .tab-content {
-  flex: 1 1 0;
-  min-height: 0;          /* indispensable pour activer overflow-y:auto */
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Cards à l'intérieur du tab : hauteur naturelle (ne pas étirer) */
-#epw-tabs-parent > .tab-content .card {
-  flex: 0 0 auto;
-}
-
-/* Padding interne des cards du panneau gauche */
+/* Padding interne des cards */
 .left-panel .card-body {
   padding-top: 12px;
   padding-bottom: 12px;
+}
+
+/* Scroll-bar */
+.left-panel {
+  scrollbar-width: thin;
+  scrollbar-color: #aab1bd transparent;
+}
+
+.left-panel::-webkit-scrollbar {
+  width: 7px;
+}
+
+.left-panel::-webkit-scrollbar-thumb {
+  background-color: #aab1bd;
+  border-radius: 4px;
+}
+
+.left-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ToolTip configuration */
