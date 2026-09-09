@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 from weather_graph.config_weather_graph import VARIABLE_MAP
+from datetime import timezone, timedelta
 
 REFERENCE_YEAR = 2001
 LEAP_DAY_POLICY = "drop"  # 'drop' | 'keep' | 'merge_to_28'
@@ -81,6 +82,13 @@ EPW_NAN_VALUE_MAP = {
     "Albedo" : 999,
     "LiquidPrecipitationDepth" : 999,
     "LiquidPrecipitationQuantity" : 99,
+}
+
+SIA_FORMATS = {
+    "SIA 4028",
+    "SIA 2028:2023",
+    "SIA 2028:2010",
+    "MeteoSuisse valeurs mesurées",
 }
 
 SIA2028_2010_EXPECTED_COLUMNS = [
@@ -164,7 +172,8 @@ def rename_columns_to_unified(df, variable_map):
 
 def read_weather_file(path: str, label: str = None,
                       ref_year: int = REFERENCE_YEAR,
-                      leap_policy: str = LEAP_DAY_POLICY) -> pd.DataFrame:
+                      leap_policy: str = LEAP_DAY_POLICY,
+                      utc_offset_hours: float | None = None) -> pd.DataFrame:
 
     #Load dataframe according to file extension
     file_ext = os.path.splitext(path)[1].lower()
@@ -186,15 +195,12 @@ def read_weather_file(path: str, label: str = None,
     elif list(df.columns) == SIA4028_EXPECTED_COLUMNS:
         data_format = "SIA 4028"
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
-        df["Minute"] = 60
     elif list(df.columns) == SIA2028_2023_EXPECTED_COLUMNS:
         data_format = "SIA 2028:2023"
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
-        df["Minute"] = 60
     elif list(df.columns) == SIA2028_2010_EXPECTED_COLUMNS:
         data_format = "SIA 2028:2010"
         df = df.rename(columns=SIA_TIME_COLUMN_RENAME) #Colonnes temporelles SIA -> colonnes temporelles unifiées
-        df["Minute"] = 60
     elif list(df.columns) == METEOSUISSE_EXPECTED_COLUMNS:
         data_format = "MeteoSuisse valeurs mesurées"
         print("Reading .csv file with Meteosuisse (measured values) column names.")
@@ -203,7 +209,6 @@ def read_weather_file(path: str, label: str = None,
         df["Month"] = df["reference_timestamp"].dt.month
         df["Day"] = df["reference_timestamp"].dt.day
         df["Hour"] = df["reference_timestamp"].dt.hour
-        df["Minute"] = 60
     else:
         print("[WARN] Reading .csv file with unknown column names - skipping this file.")
         col_names = ";".join(df.columns)
@@ -228,17 +233,14 @@ def read_weather_file(path: str, label: str = None,
         elif leap_policy == "merge_to_28":
             df.loc[is_feb29, "Day"] = 28
 
-    base_date = pd.to_datetime(
-        (pd.Series([ref_year] * len(df)).astype(str) + "-" +
-         df["Month"].astype(str).str.zfill(2) + "-" +
-         df["Day"].astype(str).str.zfill(2)),
-        errors="coerce"
-    )
-    hour = df["Hour"].astype(int)
-    minute = df["Minute"].astype(int)
-    minutes_since_midnight = (hour - 1) * 60 + minute
-    minutes_since_midnight = minutes_since_midnight.where(minute != 60, hour * 60)
-    dt = base_date + pd.to_timedelta(minutes_since_midnight, unit="m")
+    if data_format in {"EPW", *SIA_FORMATS}:
+        dt = build_weather_datetime(
+            df=df,
+            data_format=data_format,
+            ref_year=ref_year,
+            utc_offset_hours=utc_offset_hours,
+        )
+        df.insert(0, "datetime", dt)
 
     #Unit conversion
     if data_format in UNIT_CONVERSIONS:
@@ -249,7 +251,6 @@ def read_weather_file(path: str, label: str = None,
     #Column names conversion
     df = rename_columns_to_unified(df, VARIABLE_MAP)
 
-    df.insert(0, "datetime", dt)
     df["source"] = path
     df["source_label"] = os.path.basename(path)
 
@@ -258,6 +259,93 @@ def read_weather_file(path: str, label: str = None,
         if var in df.columns:
             df[var] = df[var].mask(df[var] >= nan_val)
     return df
+
+
+
+def build_weather_datetime(df: pd.DataFrame, data_format: str, ref_year: int, utc_offset_hours: float | None = None) -> pd.Series:
+    """
+    Build timezone-aware timestamps according to the source format.
+
+    EPW:
+        Hour=1..24, Minute=60.
+        Timestamps represent the end of the hourly interval.
+
+    SIA:
+        Hour=0..23.
+        The hour is used directly as an offset from midnight.
+
+    The resulting timestamps use a fixed UTC offset and therefore
+    do not apply daylight-saving-time transitions.
+    """
+    #print("--- Call to build_weather_datetime ---")
+    base_date = pd.to_datetime(
+        pd.Series(ref_year, index=df.index).astype(str)
+        + "-"
+        + df["Month"].astype(str).str.zfill(2)
+        + "-"
+        + df["Day"].astype(str).str.zfill(2),
+        errors="coerce",
+    )
+
+    if data_format == "EPW":
+        hour = df["Hour"].astype("int64")
+        minute = df["Minute"].astype("int64")
+
+        minutes_since_midnight = ((hour - 1) * 60 + minute)
+
+        dt = (base_date + pd.to_timedelta(minutes_since_midnight,unit="m"))
+
+    elif data_format in SIA_FORMATS:
+        hour = df["Hour"].astype("int64")
+
+        dt = (base_date + pd.to_timedelta(hour,unit="h"))
+
+    else:
+        raise ValueError(
+            f"Unsupported format for weather datetime: "
+            f"{data_format}"
+        )
+
+    if utc_offset_hours :
+        fixed_timezone = timezone(timedelta(hours=utc_offset_hours))
+        dt = dt.dt.tz_localize(fixed_timezone)
+
+    #Validations
+    if data_format == "EPW":
+        invalid_hours = ~df["Hour"].between(1, 24)
+        invalid_minutes = ~df["Minute"].between(1, 60)
+
+        if invalid_hours.any():
+            raise ValueError(
+                "EPW file contains hours outside the expected "
+                "range 1..24."
+            )
+
+        if invalid_minutes.any():
+            raise ValueError(
+                "EPW file contains minutes outside the expected "
+                "range 1..60."
+            )
+
+    elif data_format in SIA_FORMATS:
+        invalid_hours = ~df["Hour"].between(0, 23)
+
+        if invalid_hours.any():
+            raise ValueError(
+                "SIA file contains hours outside the expected "
+                "range 0..23."
+            )
+
+    if data_format == "EPW" and not df["Minute"].eq(60).all():
+        raise ValueError(
+            "This EPW file contains minute values different from 60."
+        )
+
+    #print(dt.iloc[0])
+
+    return dt
+
+
 
 def load_weather_data_from_folder(folder: str, files=None, exts=(".epw", ".csv"),
                                   ref_year: int = REFERENCE_YEAR,

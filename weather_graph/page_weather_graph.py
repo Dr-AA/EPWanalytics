@@ -414,20 +414,26 @@ def create_page_weather_graph():
     )
 
     # ---- Colonne droite : zone d'affichage (les 3 Graphs) ----
+    credit = html.Label("Source des données: MétéoSuisse", style={'fontSize': '12px', 'min-height': '30px' })
+
     right_display = dcc.Loading(
         html.Div(
             children = [
                 dcc.Graph(id='epw-graph', style={'height': '100%'}, config={'displayModeBar': True}),
                 dcc.Graph(id='epw-windrose', style={'height': '100%', 'display': 'none'}),
                 dcc.Graph(id='heat-map', style={'height': '100%', 'display': 'none'}),
+                credit
             ],
             id='right-display',
             className='right-display',
+            style={'text-align': 'right'}
         ),
         type = "circle",
         className = "loading-container",
         parent_style={"height": "100%"}
     )
+
+
 
     # ---- Grille : gauche (contrôles) / droite (affichage) ----
     children = [
