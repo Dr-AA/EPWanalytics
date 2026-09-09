@@ -542,6 +542,19 @@ def callbacks_weather_graph(app):
 
         if x_mode == 'date':
 
+            if period_label == "Heure":
+                date_fmt = "%d %b %H:%M"
+            elif period_label == "Jour":
+                date_fmt = "%d %b"
+            elif period_label == "Semaine":
+                date_fmt = "Semaine du %d %b"
+            elif period_label == "Mois":
+                date_fmt = "%b"
+            elif period_label == "Année":
+                date_fmt = "%Y"
+            else :
+                date_fmt = "%d %b %H:%M"
+
             # Axe x : Mode temporel
             if period_label == "Année": # -> Bar chart
                 print("Bar chart")
@@ -607,7 +620,6 @@ def callbacks_weather_graph(app):
                                     dash=cfg.LINE_STYLES[payload["line_style"]]["plotly"],
                                     width=2,
                                 ),
-                                hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
                             )
                         )
                     else: #if not show_band
@@ -622,7 +634,6 @@ def callbacks_weather_graph(app):
                                     dash=cfg.LINE_STYLES[payload["line_style"]]["plotly"],
                                     width=2,
                                 ),
-                                hovertemplate="%{x|%d-%m %H:%M}<br>%{y:.2f}",
                             )
                         )
                     # Ajouter nuits
@@ -655,6 +666,13 @@ def callbacks_weather_graph(app):
 
             subtitle = func_label
 
+            hovertemplate = (
+                f"%{{x|{date_fmt}}}<br>"
+                "Valeur : %{y:.2f}"
+                "<extra></extra>"  # pour cacher le nom de la série
+            )
+            fig.update_traces(hovertemplate=hovertemplate)
+
         else:
             print('mode tri')
             # Axe x : Mode tri — faire le tri APRES agrégation
@@ -675,7 +693,6 @@ def callbacks_weather_graph(app):
                     y=tmp[var_col],
                     name=df_src["source_label"].iloc[0],
                     marker_color=payload["color"],
-                    #dash=LINE_STYLES[payload["line_style"]]["plotly"],
                     mode='markers',
                     hovertemplate="Rang %{x}<br>%{y:.2f}<br>%{customdata|%d-%m %H:%M}",
                     customdata=tmp['datetime']  # afficher la date source dans le hover
@@ -684,23 +701,6 @@ def callbacks_weather_graph(app):
             x_title = "Index (1..n)"
             subtitle = "Tri croissant" if isAscending else "Tri décroissant"
 
-        #Set Hovertemplate
-        if period_label == "Heure":
-            date_fmt = "%d %b %H:%M"
-        elif period_label == "Jour":
-            date_fmt = "%d %b"
-        elif period_label == "Semaine":
-            date_fmt = "Semaine du %d %b"
-        elif period_label == "Mois":
-            date_fmt = "%b"
-        elif period_label == "Année":
-            date_fmt = "%Y"
-        hovertemplate =(
-            f"%{{x|{date_fmt}}}<br>"
-            "Valeur : %{y:.2f}"
-            "<extra></extra>" #pour cacher le nom de la série
-        )
-        fig.update_traces(hovertemplate=hovertemplate)
 
         # 3) Layout de base
         if func_label == "Somme cumulée" :
