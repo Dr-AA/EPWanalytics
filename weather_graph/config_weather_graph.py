@@ -282,7 +282,8 @@ TOOLTIPS = {
             html.Ul([
                 html.Li([html.B("DRY : "), "Design Référence Year, l'année standard de référence."]),
                 html.Li([html.B("1-in-10 : "), " Année exceptionnellement chaude, à occurence 1 année sur 10"]),
-            ])
+            ]),
+            "Pour la station GVE Genève Cointrin, les mesures historiques sont également disponibles"
         ],
         "loaded-sources-container" : ["Charger plusieurs scénarios climatiques pour les comparer.",html.Br(),
                                       "Cliquer sur leur couleur et type de traits pour modifier l'apparence."],
