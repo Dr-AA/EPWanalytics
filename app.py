@@ -8,8 +8,6 @@ import dash_bootstrap_components as dbc
 # SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, YETI.
 # https://dash-bootstrap-components.opensource.faculty.ai/docs/themes/
 
-
-
 app = dash.Dash(
     __name__,
     suppress_callback_exceptions=True,

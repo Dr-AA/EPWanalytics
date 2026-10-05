@@ -541,20 +541,6 @@ def callbacks_weather_graph(app):
         ed, em = parse_ddmm(end_label, (31, 12))
 
         if x_mode == 'date':
-
-            if period_label == "Heure":
-                date_fmt = "%d %b %H:%M"
-            elif period_label == "Jour":
-                date_fmt = "%d %b"
-            elif period_label == "Semaine":
-                date_fmt = "Semaine du %d %b"
-            elif period_label == "Mois":
-                date_fmt = "%b"
-            elif period_label == "Année":
-                date_fmt = "%Y"
-            else :
-                date_fmt = "%d %b %H:%M"
-
             # Axe x : Mode temporel
             if period_label == "Année": # -> Bar chart
                 print("Bar chart")
@@ -665,6 +651,20 @@ def callbacks_weather_graph(app):
                     )
 
             subtitle = func_label
+
+            #Hovertemplate pour x en mode date :
+            if period_label == "Heure":
+                date_fmt = "%d %b %H:%M (UTC+0)"
+            elif period_label == "Jour":
+                date_fmt = "%d %b"
+            elif period_label == "Semaine":
+                date_fmt = "Semaine du %d %b"
+            elif period_label == "Mois":
+                date_fmt = "%b"
+            elif period_label == "Année":
+                date_fmt = "%Y"
+            else :
+                date_fmt = "%d %b %H:%M"
 
             hovertemplate = (
                 f"%{{x|{date_fmt}}}<br>"
