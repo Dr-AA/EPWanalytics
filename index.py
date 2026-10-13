@@ -7,7 +7,7 @@ from navbar import create_navbar
 from weather_graph.page_weather_graph import create_page_weather_graph
 from weather_graph.callbacks_weather_graph import callbacks_weather_graph
 
-
+server = app.server
 nav = create_navbar()
 
 app.layout = html.Div([
